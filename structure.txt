@@ -1,0 +1,27 @@
+/bankapp
+    /login
+    /profile
+    /transfer
+    /api/v1
+        /register
+          POST {login, password}
+        /login
+          POST {login, password}
+        /logout
+          POST {}
+        /users
+          GET
+          POST {login, name, password}
+            /{id}
+              GET
+              PUT {name, password}
+              DELETE
+        /accounts
+          GET
+          POST {user_id, type}
+            /{id}
+              GET
+              PUT {is_default}
+              DELETE
+        /transactions
+          POST {user_id, user_login, money}

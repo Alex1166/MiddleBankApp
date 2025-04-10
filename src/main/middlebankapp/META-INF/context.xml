@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+
+    <Resource name="jdbc/PostgresDB"
+              auth="Container"
+              type="javax.sql.DataSource"
+              username="${POSTGRES_USERNAME}"
+              password="${POSTGRES_PASSWORD}"
+              driverClassName="org.postgresql.Driver"
+              url="${POSTGRES_URL}/MiddleBankApp"
+              maxTotal="20"
+              maxIdle="10"
+              maxWaitMillis="-1"/>
+</Context>

@@ -1,0 +1,77 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="1" author="alex">
+        <createTable tableName="users">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="login" type="varchar(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints unique="false" nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2" author="alex">
+        <createTable tableName="accounts">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="bigint">
+                <constraints unique="false" foreignKeyName="user_id" references="users(id)" nullable="false"/>
+            </column>
+            <column name="type" type="int">
+                <constraints unique="false" nullable="false"/>
+            </column>
+            <column name="money" type="numeric">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3" author="alex">
+        <sql>
+            CREATE UNIQUE INDEX accounts_user_id_is_default_idx
+            ON accounts (id, is_default)
+            WHERE is_default = TRUE;
+        </sql>
+    </changeSet>
+
+    <changeSet id="4" author="alex">
+        <createTable tableName="transactions">
+            <column name="id" type="bigserial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sender_account_id" type="bigint">
+                <constraints unique="false" foreignKeyName="sender_account_id" references="accounts(id)" nullable="true"/>
+            </column>
+            <column name="recipient_account_id" type="bigint">
+                <constraints unique="false" foreignKeyName="recipient_account_id" references="accounts(id)" nullable="true"/>
+            </column>
+            <column name="time" type="timestamp without time zone">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="5" author="alex">
+        <createTable tableName="credentials">
+            <column name="user_id" type="bigint">
+                <constraints primaryKey="true" foreignKeyName="user_id" references="users(id)" nullable="false"/>
+            </column>
+            <column name="password" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

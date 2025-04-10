@@ -1,0 +1,14 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <include file="\src\main\resources\db\changelog\db.20250403-create-tables-users-accounts-transactions.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250403-allow-null-user-name.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250406-add-money-column-to-transactions.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250406-set-default-to-now-for-time-column-in-transactions.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250407-add-title-column-to-accounts.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250409-change-index-in-accounts.xml"/>
+
+</databaseChangeLog>

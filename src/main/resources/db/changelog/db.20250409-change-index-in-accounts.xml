@@ -1,0 +1,21 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <changeSet id="10" author="alex">
+        <sql>
+            DROP INDEX accounts_user_id_is_default_idx;
+        </sql>
+    </changeSet>
+
+    <changeSet id="11" author="alex">
+        <sql>
+            CREATE UNIQUE INDEX accounts_user_id_is_default_idx
+            ON accounts (user_id, is_default)
+            WHERE is_default = TRUE;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

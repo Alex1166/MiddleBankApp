@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'war'
+    id 'org.liquibase.gradle' version '2.2.0' // Add this at the top
+}
+
+group = 'my.bankapp'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    // ✅ Liquibase core library
+    liquibaseRuntime 'org.liquibase:liquibase-core:4.23.0'
+    // ✅ Add PostgreSQL Driver to Liquibase runtime
+    liquibaseRuntime 'org.postgresql:postgresql:42.7.2'
+    // ✅ Required to resolve classpath issues
+    liquibaseRuntime 'info.picocli:picocli:4.7.0'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    providedCompile 'jakarta.servlet:jakarta.servlet-api:5.0.0' // Servlet API
+    implementation 'org.liquibase:liquibase-core:4.23.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.24.3'
+    implementation 'org.postgresql:postgresql:42.7.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.15.0'
+    implementation 'commons-codec:commons-codec:1.17.0'
+//    providedRuntime 'org.postgresql:postgresql:42.7.2'
+}
+
+test {
+//    useJUnitPlatform()
+}
+
+war {
+    archiveFileName = 'middlebankapp.war' // Name of the output WAR file
+}
+
+liquibase {
+    activities {
+        main { }
+    }
+}
