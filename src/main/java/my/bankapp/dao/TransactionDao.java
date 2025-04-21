@@ -1,5 +1,6 @@
 package my.bankapp.dao;
 
+import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Transaction;
 
 import javax.sql.DataSource;
@@ -10,10 +11,10 @@ import java.sql.SQLException;
 import java.util.stream.Stream;
 
 public class TransactionDao implements GenericDao<Transaction> {
-    private final DataSource dataSource;
+    private final DaoFactory daoFactory;
 
-    public TransactionDao(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public TransactionDao(DaoFactory daoFactory) {
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -35,7 +36,7 @@ public class TransactionDao implements GenericDao<Transaction> {
                     RETURNING id;
                 """;
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, transaction.getSenderAccountId());
             statement.setLong(2, transaction.getRecipientAccountId());

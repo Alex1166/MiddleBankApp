@@ -1,5 +1,6 @@
 package my.bankapp.dao;
 
+import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.User;
 
 import javax.sql.DataSource;
@@ -11,10 +12,10 @@ import java.sql.Statement;
 import java.util.stream.Stream;
 
 public class UserDao implements GenericDao<User> {
-    private final DataSource dataSource;
+    private final DaoFactory daoFactory;
 
-    public UserDao(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public UserDao(DaoFactory daoFactory) {
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -26,7 +27,7 @@ public class UserDao implements GenericDao<User> {
                      "WHERE users.id = ? " +
                      "LIMIT 1";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, id);
 
@@ -58,7 +59,7 @@ public class UserDao implements GenericDao<User> {
                      "WHERE users.login = ? " +
                      "LIMIT 1";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, login);
 
@@ -94,7 +95,7 @@ public class UserDao implements GenericDao<User> {
         long userId = -1;
 
         try {
-            connection = dataSource.getConnection();
+            connection = daoFactory.getConnection();
             connection.setAutoCommit(false); // Start transaction
 
             String sql = "SET LOCAL lock_timeout = '15s'";
@@ -168,6 +169,7 @@ public class UserDao implements GenericDao<User> {
         if (userId == -1) {
             throw new RuntimeException(String.format("User %s was not created", userId));
         } else {
+            user.setId(userId);
             return user;
         }
     }
@@ -188,7 +190,7 @@ public class UserDao implements GenericDao<User> {
 
         String sql = "SELECT password FROM credentials WHERE user_id = ?";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, user.getId());
 
@@ -201,7 +203,7 @@ public class UserDao implements GenericDao<User> {
         }
 
         if (hash == null) {
-            throw new RuntimeException(String.format("User's password %s not found", user.getPassword()));
+            throw new RuntimeException(String.format("User's password %s not found", user.getId()));
         }
 
         return hash;

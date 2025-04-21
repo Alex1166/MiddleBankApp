@@ -15,9 +15,8 @@ import java.util.stream.Collectors;
 
 public class AccountService {
 
-    private AccountDao accountDao;
-//    private DaoBank accountDao;
-    private DaoFactory daoFactory;
+    private final AccountDao accountDao;
+    private final DaoFactory daoFactory;
 
     public AccountService(DaoFactory daoFactory) {
         this.daoFactory = daoFactory;
@@ -25,20 +24,27 @@ public class AccountService {
     }
 
     public AccountDto toDto(Account account) throws IllegalArgumentException {
-        return new AccountDto(account.getId(), account.getUserId(), account.getType(), account.getBalance(), account.getTitle(),
-                account.getIsDefault());
+        return new AccountDto(account.getId(), account.getUserId(), account.getType(), account.getTitle(), account.getBalance(),
+                account.isDefault());
     }
 
     public Account fromDto(AccountDto accountDto) throws IllegalArgumentException {
-        return new Account(accountDto.getId(), accountDto.getUserId(), accountDto.getType(), accountDto.getBalance(), accountDto.getTitle(),
-                accountDto.getIsDefault());
+        return new Account(accountDto.getId(), accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(),
+                accountDto.isDefault());
     }
 
-    public Account createAccount(long userId, int accountType, String title) throws IllegalArgumentException {
+    public AccountDto createAccount(long userId, int accountType, String title) throws IllegalArgumentException {
 
-        Account account = new Account(-1, userId, accountType, new BigDecimal("0"), title, false);
+        Account account = new Account(-1, userId, accountType, title, new BigDecimal("0"), false);
 
-        return accountDao.insert(account);
+        return toDto(accountDao.insert(account));
+    }
+
+    public AccountDto createAccount(AccountDto accountDto) throws IllegalArgumentException {
+
+        Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(), false);
+
+        return toDto(accountDao.insert(account));
     }
 
 //    public Account createAccount(User user, int accountType, String title) throws IllegalArgumentException {
@@ -63,15 +69,6 @@ public class AccountService {
 
     public AccountDto updateAccount(AccountDto accountDto) {
         return toDto(accountDao.update(fromDto(accountDto)));
-    }
-
-    public AccountDto updateAccount(long accountId, boolean isDefault, String title) {
-
-        AccountDto account = getAccountById(accountId);
-        account.setIsDefault(isDefault);
-        account.setTitle(title);
-
-        return toDto(accountDao.update(fromDto(account)));
     }
 
     public AccountDto setUserDefaultAccount(AccountDto accountDto) throws RuntimeException {
@@ -124,17 +121,4 @@ public class AccountService {
 
         return toDto(account);
     }
-
-
-//    public Account setUserDefaultAccount(long userId, long defaultAccountNumber) throws RuntimeException {
-//
-//        Account account = getAccountById(defaultAccountNumber);
-//        account.setDefault(true);
-//
-//        return accountDao.update(account);
-//    }
-
-//    public boolean setAccountTitle(long accountId, String title) throws RuntimeException {
-//        return accountDao.setAccountTitle(accountId, title);
-//    }
 }

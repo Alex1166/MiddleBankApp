@@ -1,5 +1,6 @@
 package my.bankapp.factory;
 
+import lombok.Getter;
 import my.bankapp.service.AccountService;
 import my.bankapp.service.TransactionService;
 import my.bankapp.service.UserService;
@@ -9,7 +10,9 @@ import org.apache.logging.log4j.Logger;
 
 public class ServiceFactory {
 
+    @Getter
     private final DaoFactory daoFactory;
+    private ControllerFactory controllerFactory;
     private UserService userService;
     private AccountService accountService;
     private TransactionService transactionService;
@@ -41,6 +44,14 @@ public class ServiceFactory {
         }
 
         return transactionService;
+    }
+
+    public ControllerFactory getControllerFactory(){
+        if (controllerFactory == null) {
+            controllerFactory = new ControllerFactory();
+        }
+
+        return controllerFactory;
     }
 
     public Logger getLogger() {

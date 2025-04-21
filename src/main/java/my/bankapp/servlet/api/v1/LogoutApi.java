@@ -1,4 +1,4 @@
-package my.bankapp.servlet;
+package my.bankapp.servlet.api.v1;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -9,8 +9,8 @@ import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 
-@WebServlet("/v1/logout")
-public class LogoutServlet extends HttpServlet {
+@WebServlet("/api/v1/logout")
+public class LogoutApi extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String username = req.getParameter("username");

@@ -1,7 +1,6 @@
 package my.bankapp.service;
 
-import my.bankapp.dao.AccountDao;
-import my.bankapp.dao.TransactionDao;
+import my.bankapp.dto.TransactionDto;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 import my.bankapp.model.Transaction;
@@ -12,17 +11,22 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class TransactionService {
+    private final DaoFactory daoFactory;
 
-    private DaoFactory daoFactory;
-    private TransactionDao transactionDao;
-    private AccountDao accountDao;
-
-    //    public TransactionService(TransactionDaoImpl transactionDao, AccountDaoImpl accountDao) {
-//        this.transactionDao = transactionDao;
-//        this.accountDao = accountDao;
-//    }
     public TransactionService(DaoFactory daoFactory) {
         this.daoFactory = daoFactory;
+    }
+
+    public TransactionDto toDto(Transaction transaction) throws IllegalArgumentException {
+        return new TransactionDto(transaction.getId(), transaction.getSenderAccountId(), transaction.getRecipientAccountId(), transaction.getMoney());
+    }
+
+    public Transaction fromDto(TransactionDto transactionDto) throws IllegalArgumentException {
+        return new Transaction(transactionDto.getId(), transactionDto.getSenderAccountId(), transactionDto.getRecipientAccountId(), transactionDto.getMoney());
+    }
+
+    public TransactionDto transferMoney(TransactionDto transactionDto) throws IllegalArgumentException {
+        return toDto(transferMoney(transactionDto.getSenderAccountId(), transactionDto.getRecipientAccountId(), transactionDto.getMoney()));
     }
 
     public Transaction transferMoney(long senderAccountId, long recipientAccountId, BigDecimal money) throws IllegalArgumentException {
@@ -30,8 +34,6 @@ public class TransactionService {
         Connection connection = null;
         RuntimeException mainException = null;
         Transaction transaction = null;
-
-        BigDecimal currentBalance = null;
 
         try {
             connection = daoFactory.getDataSource().getConnection();
@@ -42,15 +44,10 @@ public class TransactionService {
             }
 
             Account senderAccount = daoFactory.getAccountDao().findById(senderAccountId);
-//            currentBalance = senderAccount.getBalance();
-//            currentBalance = currentBalance.subtractValue(money);
             senderAccount.subtractValue(money);
             senderAccount = daoFactory.getAccountDao().update(senderAccount);
 
             Account recipientAccount = daoFactory.getAccountDao().findById(recipientAccountId);
-//            currentBalance = recipientAccount.getBalance();
-//            currentBalance = currentBalance.addValue(money);
-//            recipientAccount.setBalance(currentBalance);
             senderAccount.addValue(money);
             recipientAccount = daoFactory.getAccountDao().update(recipientAccount);
 
@@ -88,6 +85,6 @@ public class TransactionService {
 
         Transaction transaction = new Transaction(-1, senderAccountId, recipientAccountId, money);
 
-        return transactionDao.insert(transaction);
+        return daoFactory.getTransactionDao().insert(transaction);
     }
 }

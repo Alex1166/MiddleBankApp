@@ -1,5 +1,18 @@
 package my.bankapp.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Setter
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString(of = {"login", "name"})
+@EqualsAndHashCode(of = {"id", "login"})
 public class UserDto {
     private String login;
     private String name;
@@ -9,48 +22,24 @@ public class UserDto {
 
     public UserDto(long id,
                    String login,
-                   String name,
-                   String password
+                   String name
+//                , String password
 //            , long defaultAccountNumber
     ) {
         this.id = id;
         this.login = login;
         this.name = name;
-        this.password = password;
+//        this.password = password;
 //        this.defaultAccountNumber = defaultAccountNumber;
     }
 
-    public String getLogin() {
-        return login;
-    }
+    //    public String getPassword() {
+//        return password;
+//    }
 
-    public void setLogin(String login) {
-        this.login = login;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
+//    public void setPassword(String password) {
+//        this.password = password;
+//    }
 
 //    public void setDefaultAccountNumber(long defaultAccountNumber) {
 //        this.defaultAccountNumber = defaultAccountNumber;
@@ -62,9 +51,4 @@ public class UserDto {
 //        }
 //        return this.defaultAccountNumber;
 //    }
-
-    @Override
-    public String toString() {
-        return "User:" + this.login + "\n";
-    }
 }

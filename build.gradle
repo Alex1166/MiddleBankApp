@@ -7,6 +7,8 @@ plugins {
 group = 'my.bankapp'
 version = '1.0-SNAPSHOT'
 
+sourceCompatibility = '17' // or your Java version
+
 repositories {
     mavenCentral()
 }
@@ -20,17 +22,29 @@ dependencies {
     // ✅ Required to resolve classpath issues
     liquibaseRuntime 'info.picocli:picocli:4.7.0'
 
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     providedCompile 'jakarta.servlet:jakarta.servlet-api:5.0.0' // Servlet API
-    implementation 'com.zaxxer:HikariCP:5.1.0'
+    implementation 'com.zaxxer:HikariCP:6.3.0'
     implementation 'org.liquibase:liquibase-core:4.23.0'
-    implementation 'org.apache.logging.log4j:log4j-core:2.24.3'
     implementation 'org.postgresql:postgresql:42.7.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
     implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.15.0'
     implementation 'commons-codec:commons-codec:1.17.0'
 //    providedRuntime 'org.postgresql:postgresql:42.7.2'
+
+    // SLF4J API (Hikari uses this)
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+
+    // Log4j 2 core + API
+    implementation 'org.apache.logging.log4j:log4j-api:2.24.3'
+    implementation 'org.apache.logging.log4j:log4j-core:2.24.3'
+
+    // SLF4J bridge to Log4j 2
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3'
 }
 
 test {

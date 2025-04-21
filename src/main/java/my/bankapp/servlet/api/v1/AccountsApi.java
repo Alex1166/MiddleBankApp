@@ -99,11 +99,16 @@ public class AccountsApi extends ApiHttpServlet {
         long currentUserId = (long) (request.getSession().getAttribute("userId"));
         String title = (String) data.get("title");
 
-        accountService.createAccount(currentUserId, 0, title);
+        AccountDto accountDto = accountService.createAccount(currentUserId, 0, title);
 
-//        books.put(books.size() + 1, new Book(books.size() + 1, request.getParameter("title"), request.getParameter("description")));
+        ObjectMapper objectMapper = new ObjectMapper();
+        String accountJson = objectMapper.writeValueAsString(accountDto);
 
         response.setStatus(HttpServletResponse.SC_ACCEPTED);
+        response.setContentType("application/json");
+
+        PrintWriter writer = response.getWriter();
+        writer.print(accountJson);
     }
 
 
@@ -146,7 +151,7 @@ public class AccountsApi extends ApiHttpServlet {
 
                 if (data.containsKey("default")) {
                     boolean isDefault = Boolean.parseBoolean((String) data.get("default"));
-                    accountDto.setIsDefault(isDefault);
+                    accountDto.setDefault(isDefault);
                     accountDto = accountService.setUserDefaultAccount(accountDto);
 //                    result = accountService.setUserDefaultAccount(currentUserId, accountId);
                 }

@@ -44,5 +44,6 @@ public class ContextListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent event) {
 //        System.out.println("🛑 Application Stopped!");
         log.info("🛑 Application Stopped!");
+        serviceFactory.getDaoFactory().closeDataSource();
     }
 }

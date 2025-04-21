@@ -15,11 +15,11 @@ public class UserService {
     }
 
     public UserDto toDto(User user) throws IllegalArgumentException {
-        return new UserDto(user.getId(), user.getLogin(), user.getName(), user.getPassword());
+        return new UserDto(user.getId(), user.getLogin(), user.getName());
     }
 
     public User fromDto(UserDto userDto) throws IllegalArgumentException {
-        return new User(userDto.getId(), userDto.getLogin(), userDto.getName(), userDto.getPassword());
+        return new User(userDto.getId(), userDto.getLogin(), userDto.getName(), null);
     }
 
     public UserDto getUserByLogin(String login) throws RuntimeException {
@@ -28,6 +28,15 @@ public class UserService {
 
     public UserDto getUserById(long userId) throws RuntimeException {
         return toDto(userDao.findById(userId));
+    }
+
+    public UserDto createNewUser(UserDto userDto) throws RuntimeException {
+
+        String hash = DigestUtils.md5Hex(userDto.getPassword());
+
+        User user = new User(-1, userDto.getLogin(), userDto.getName(), hash);
+
+        return toDto(userDao.insert(user));
     }
 
     public UserDto createNewUser(String login, String name, String password) throws RuntimeException {

@@ -1,5 +1,6 @@
 package my.bankapp.dao;
 
+import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 
 import javax.sql.DataSource;
@@ -10,10 +11,10 @@ import java.sql.SQLException;
 import java.util.stream.Stream;
 
 public class AccountDao implements GenericDao<Account> {
-    private final DataSource dataSource;
+    private final DaoFactory daoFactory;
 
-    public AccountDao(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public AccountDao(DaoFactory daoFactory) {
+        this.daoFactory = daoFactory;
     }
 
     @Override
@@ -21,7 +22,7 @@ public class AccountDao implements GenericDao<Account> {
         Account account = null;
         String sql = "SELECT id, user_id, type, money, is_default, title FROM accounts WHERE id = ? LIMIT 1";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, id);
 
@@ -29,7 +30,7 @@ public class AccountDao implements GenericDao<Account> {
 
             while (resultSet.next()) {
                 account = new Account(resultSet.getLong("id"), resultSet.getLong("user_id"), resultSet.getInt("type"),
-                        resultSet.getBigDecimal("money"), resultSet.getString("title"), resultSet.getBoolean("is_default"));
+                        resultSet.getString("title"), resultSet.getBigDecimal("money"), resultSet.getBoolean("is_default"));
             }
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to get account %s", id), sqle);
@@ -52,7 +53,7 @@ public class AccountDao implements GenericDao<Account> {
 
         String sql = "SELECT id, user_id, type, money, is_default, title FROM accounts WHERE user_id = ? ORDER BY is_default DESC, id ASC";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, id);
 
@@ -60,7 +61,7 @@ public class AccountDao implements GenericDao<Account> {
 
             while (resultSet.next()) {
                 Account account = new Account(resultSet.getLong("id"), resultSet.getLong("user_id"), resultSet.getInt("type"),
-                        resultSet.getBigDecimal("money"), resultSet.getString("title"), resultSet.getBoolean("is_default"));
+                        resultSet.getString("title"), resultSet.getBigDecimal("money"), resultSet.getBoolean("is_default"));
                 builder.add(account);
             }
         } catch (SQLException sqle) {
@@ -80,7 +81,7 @@ public class AccountDao implements GenericDao<Account> {
                     RETURNING id, is_default;
                 """;
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, account.getUserId());
             statement.setInt(2, account.getType());
@@ -101,6 +102,7 @@ public class AccountDao implements GenericDao<Account> {
         if (accountId == -1) {
             throw new RuntimeException(String.format("Account for user %s was not created", account.getUserId()));
         } else {
+            account.setId(accountId);
             account.setDefault(isDefault);
             return account;
         }
@@ -109,12 +111,12 @@ public class AccountDao implements GenericDao<Account> {
     public Account update(Account account) {
 
         String sql = "UPDATE accounts SET user_id=?, type=?, money=?, is_default=?, title=? WHERE id=?;";
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, account.getUserId());
             statement.setInt(2, account.getType());
             statement.setBigDecimal(3, account.getBalance());
-            statement.setBoolean(4, account.getIsDefault());
+            statement.setBoolean(4, account.isDefault());
             statement.setString(5, account.getTitle());
             statement.setLong(6, account.getId());
 
@@ -133,7 +135,7 @@ public class AccountDao implements GenericDao<Account> {
 
         String sql = "UPDATE accounts SET is_default = FALSE WHERE user_id = ? AND is_default = TRUE;";
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
                 statement.setLong(1, account.getUserId());
 
@@ -154,7 +156,7 @@ public class AccountDao implements GenericDao<Account> {
         int updatedRows = 0;
 
         try {
-            connection = dataSource.getConnection();
+            connection = daoFactory.getConnection();
             connection.setAutoCommit(false); // Start transaction
 
             String sql = "UPDATE accounts SET is_default = FALSE WHERE user_id = ? AND is_default = TRUE;";
