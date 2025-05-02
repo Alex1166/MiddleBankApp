@@ -2,6 +2,7 @@ package my.bankapp.dao;
 
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Transaction;
+import my.bankapp.model.request.GetRequest;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -10,7 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.stream.Stream;
 
-public class TransactionDao implements GenericDao<Transaction> {
+public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Transaction> {
     private final DaoFactory daoFactory;
 
     public TransactionDao(DaoFactory daoFactory) {
@@ -59,12 +60,7 @@ public class TransactionDao implements GenericDao<Transaction> {
     }
 
     @Override
-    public Transaction update(Transaction transaction) {
-        return null;
-    }
-
-    @Override
-    public boolean delete(long id) {
-        return false;
+    public Stream<Transaction> findAllByParameters(GetRequest request) {
+        return Stream.empty();
     }
 }

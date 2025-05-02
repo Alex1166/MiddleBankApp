@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(of = {"title", "userId", "balance", "type", "isDefault"})
+@ToString(of = {"title", "userId", "balance", "type", "isDefault", "isDeleted"})
 @EqualsAndHashCode(of = {"id", "userId"})
 public class AccountDto {
     private long id;
@@ -22,4 +22,5 @@ public class AccountDto {
     private String title;
     private BigDecimal balance;
     private boolean isDefault;
+    private boolean isDeleted;
 }

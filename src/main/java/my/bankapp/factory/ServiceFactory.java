@@ -24,7 +24,7 @@ public class ServiceFactory {
 
     public UserService getUserService() {
         if (userService == null) {
-            userService = new UserService(daoFactory.getUserDao());
+            userService = new UserService(daoFactory);
         }
 
         return userService;

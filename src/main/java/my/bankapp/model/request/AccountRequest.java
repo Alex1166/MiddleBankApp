@@ -5,8 +5,8 @@ import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class UserRequest extends IdRequest {
-    private String name;
-    private String login;
-    private String password;
+public class AccountRequest extends IdRequest {
+    private Integer type;
+    private String title;
+    private Boolean isDefault;
 }

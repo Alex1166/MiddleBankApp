@@ -4,5 +4,6 @@ import lombok.Data;
 
 @Data
 public class IdRequest {
-    private long id;
+    private Long id;
+    private Long userId;
 }

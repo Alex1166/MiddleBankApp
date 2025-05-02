@@ -11,11 +11,12 @@ import lombok.ToString;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(of = {"login", "name"})
+@ToString(of = {"login", "name", "isDeleted"})
 @EqualsAndHashCode(of = {"id", "login"})
 public class User {
     private long id;
     private String login;
     private String name;
     private String password;
+    private boolean isDeleted;
 }

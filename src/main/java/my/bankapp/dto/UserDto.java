@@ -11,27 +11,28 @@ import lombok.ToString;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(of = {"login", "name"})
+@ToString(of = {"login", "name", "isDeleted"})
 @EqualsAndHashCode(of = {"id", "login"})
 public class UserDto {
+    private long id;
     private String login;
     private String name;
     private String password;
-    private long id;
+    private boolean isDeleted;
 //    private long defaultAccountNumber;
 
-    public UserDto(long id,
-                   String login,
-                   String name
-//                , String password
-//            , long defaultAccountNumber
-    ) {
-        this.id = id;
-        this.login = login;
-        this.name = name;
-//        this.password = password;
-//        this.defaultAccountNumber = defaultAccountNumber;
-    }
+//    public UserDto(long id,
+//                   String login,
+//                   String name
+////                , String password
+////            , long defaultAccountNumber
+//    ) {
+//        this.id = id;
+//        this.login = login;
+//        this.name = name;
+////        this.password = password;
+////        this.defaultAccountNumber = defaultAccountNumber;
+//    }
 
     //    public String getPassword() {
 //        return password;

@@ -1,7 +1,9 @@
 package my.bankapp.dao;
 
 import my.bankapp.factory.DaoFactory;
+import my.bankapp.model.Transaction;
 import my.bankapp.model.User;
+import my.bankapp.model.request.GetRequest;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -11,7 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.stream.Stream;
 
-public class UserDao implements GenericDao<User> {
+public class UserDao implements CreatableDao<User>, ReadableDao<User>, UpdatableDao<User>, DeletableDao<User> {
     private final DaoFactory daoFactory;
 
     public UserDao(DaoFactory daoFactory) {
@@ -22,7 +24,7 @@ public class UserDao implements GenericDao<User> {
     public User findById(long id) {
 
         User user = null;
-        String sql = "SELECT users.id AS uid, users.login, users.name, credentials.password FROM users " +
+        String sql = "SELECT users.id AS uid, users.login, users.name, users.is_deleted, credentials.password FROM users " +
                      "LEFT JOIN credentials ON credentials.user_id = users.id " +
                      "WHERE users.id = ? " +
                      "LIMIT 1";
@@ -38,7 +40,7 @@ public class UserDao implements GenericDao<User> {
                 user = new User(resultSet.getLong("uid"),
                         resultSet.getString("login"),
                         resultSet.getString("name"),
-                        resultSet.getString("password"));
+                        resultSet.getString("password"), resultSet.getBoolean("is_deleted"));
             }
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to get user %s", id), sqle);
@@ -54,7 +56,7 @@ public class UserDao implements GenericDao<User> {
     public User findByLogin(String login) {
 
         User user = null;
-        String sql = "SELECT users.id AS uid, users.login, users.name, credentials.password FROM users " +
+        String sql = "SELECT users.id AS uid, users.login, users.name, users.is_deleted, credentials.password FROM users " +
                      "LEFT JOIN credentials ON credentials.user_id = users.id " +
                      "WHERE users.login = ? " +
                      "LIMIT 1";
@@ -70,7 +72,7 @@ public class UserDao implements GenericDao<User> {
                 user = new User(resultSet.getLong("uid"),
                         resultSet.getString("login"),
                         resultSet.getString("name"),
-                        resultSet.getString("password"));
+                        resultSet.getString("password"), resultSet.getBoolean("is_deleted"));
             }
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to get user %s", login), sqle);
@@ -176,12 +178,50 @@ public class UserDao implements GenericDao<User> {
 
     @Override
     public User update(User user) {
-        return null;
+
+        String sql = "UPDATE users SET login=?, name=?, is_deleted=? WHERE id=?;";
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, user.getLogin());
+            statement.setString(2, user.getName());
+            statement.setBoolean(3, user.isDeleted());
+            statement.setLong(4, user.getId());
+
+            if (statement.executeUpdate() == 0) {
+                throw new RuntimeException(String.format("Unable to update user %s", user.getId()));
+            }
+
+        } catch (SQLException sqle) {
+            throw new RuntimeException(String.format("Unable to update user %s", user.getId()), sqle);
+        }
+
+        return user;
     }
 
     @Override
     public boolean delete(long id) {
-        return false;
+        String sql = "DELETE FROM users WHERE id = ?";
+
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, id);
+
+            System.out.println("id = " + id);
+
+            if (statement.executeUpdate() == 0) {
+                throw new RuntimeException(String.format("Unable to delete user %s", id));
+            }
+
+        } catch (SQLException sqle) {
+            throw new RuntimeException(String.format("Unable to delete user %s", id), sqle);
+        }
+
+        return true;
+    }
+
+    @Override
+    public Stream<User> findAllByParameters(GetRequest request) {
+        return Stream.empty();
     }
 
     public String getUserPassword(User user) {
@@ -207,5 +247,26 @@ public class UserDao implements GenericDao<User> {
         }
 
         return hash;
+    }
+
+    public User setUserPassword(User user) {
+
+        String sql = "UPDATE credentials SET password = ? WHERE user_id = ?;";
+
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, user.getPassword());
+            statement.setLong(2, user.getId());
+
+            statement.executeUpdate();
+
+            if (statement.executeUpdate() == 0) {
+                throw new RuntimeException(String.format("User's %s password not changed", user.getId()));
+            }
+        } catch (SQLException sqle) {
+            throw new RuntimeException(String.format("User's %s password not changed", user.getId()));
+        }
+
+        return user;
     }
 }

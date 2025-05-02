@@ -10,5 +10,6 @@
     <include file="\src\main\resources\db\changelog\db.20250406-set-default-to-now-for-time-column-in-transactions.xml"/>
     <include file="\src\main\resources\db\changelog\db.20250407-add-title-column-to-accounts.xml"/>
     <include file="\src\main\resources\db\changelog\db.20250409-change-index-in-accounts.xml"/>
+    <include file="\src\main\resources\db\changelog\db.20250427-add-deleted-columns.xml"/>
 
 </databaseChangeLog>

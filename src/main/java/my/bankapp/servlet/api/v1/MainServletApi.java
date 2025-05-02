@@ -9,31 +9,33 @@ import jakarta.servlet.http.HttpSession;
 import my.bankapp.controller.AuthenticatingController;
 import my.bankapp.controller.Controller;
 import my.bankapp.controller.CreatableController;
+import my.bankapp.controller.DeletableController;
 import my.bankapp.controller.ReadableController;
+import my.bankapp.controller.UpdatableController;
 import my.bankapp.dto.UserDto;
 import my.bankapp.factory.ServiceFactory;
+import my.bankapp.model.request.AccountRequest;
+import my.bankapp.model.request.GetRequest;
+import my.bankapp.model.request.IdRequest;
 import my.bankapp.model.response.ControllerResponse;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// TODO: tests, factory, versioning, pagination
+// TODO: tests, factory, jwt
 
 @WebServlet(urlPatterns = "/api/*")
 public class MainServletApi extends ApiHttpServlet {
-
-    private ServiceFactory serviceFactory;
-    private Logger logger;
-
-//    private Map<String, Controller<?, ?>> controllerMap;
-//    private Map<String, Map<Integer, Controller<?, ?>>> controllerMap;
-    private Map<String, Map<String, Controller<?, ?>>> versionedControllerMap;
-    private ObjectMapper objectMapper;
 
     private static final String FULL_STABLE_VERSION = "2.0.0";
     private static final String METHOD_NOT_SUPPORTED = "МЕТОД НЕ ПОДДЕРЖИВАЕТСЯ";
@@ -41,6 +43,12 @@ public class MainServletApi extends ApiHttpServlet {
     private static final Pattern API_RESOURCE_ID_PATTERN = Pattern.compile("^/api/v\\d+/[a-z]+/\\d+$");
     private static final Pattern API_RESOURCE_VERSION_PATTERN = Pattern.compile("^/api/v([\\d.]+)");
     private static final Pattern API_RESOURCE_ENDPOINT_PATTERN = Pattern.compile("^/api/v[\\d.]+(/[^/]+)");
+    private ServiceFactory serviceFactory;
+    private Logger logger;
+    //    private Map<String, Controller<?, ?>> controllerMap;
+//    private Map<String, Map<Integer, Controller<?, ?>>> controllerMap;
+    private Map<String, Map<String, Controller<?, ?>>> versionedControllerMap;
+    private ObjectMapper objectMapper;
 
     @Override
     public void init() throws ServletException {
@@ -80,7 +88,8 @@ public class MainServletApi extends ApiHttpServlet {
             String endpoint = extractEndpointFromPath(path);
             logger.debug("endpoint = " + endpoint);
 
-            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION)).get(endpoint);
+            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION))
+                    .get(endpoint);
 
             ControllerResponse<?> response;
 
@@ -90,7 +99,15 @@ public class MainServletApi extends ApiHttpServlet {
 
             if (currentController instanceof ReadableController<?, ?> readableController) {
                 if (isGetAll) {
-                    response = readableController.processGetAll(extractIdFromSession(req), serviceFactory);
+
+                    Set<String> fieldNames = getDtoFieldNames(currentController.getDtoClass());
+
+                    GetRequest request = parseQueryParameters(req.getParameterMap(), fieldNames);
+                    request.setUserId(extractIdFromSession(req));
+
+                    response = readableController.processGetAll(request, serviceFactory);
+
+//                    response = readableController.processGetAll(extractIdFromSession(req), serviceFactory);
                 } else {
                     response = readableController.processGet(extractIdFromPath(path), serviceFactory);
                 }
@@ -119,7 +136,8 @@ public class MainServletApi extends ApiHttpServlet {
             String endpoint = extractEndpointFromPath(path);
             logger.debug("endpoint = " + endpoint);
 
-            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION)).get(endpoint);
+            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION))
+                    .get(endpoint);
 
             if (isControllerNotAccessible(req, resp, currentController)) {
                 return;
@@ -128,13 +146,109 @@ public class MainServletApi extends ApiHttpServlet {
             ControllerResponse<?> response;
             if (currentController instanceof CreatableController<?, ?> rawCreatableController) {
 
-                Object data = objectMapper.readValue(req.getInputStream(), currentController.getRequestClass());
+                IdRequest data = objectMapper.readValue(req.getInputStream(), currentController.getRequestClass());
 
                 @SuppressWarnings("unchecked")
-                CreatableController<Object, ?> creatableController =
-                        (CreatableController<Object, ?>) rawCreatableController;
+                CreatableController<?, IdRequest> creatableController =
+                        (CreatableController<?, IdRequest>) rawCreatableController;
+                if (!(currentController instanceof AuthenticatingController) && data.getUserId() == null) {
+                    data.setUserId(extractIdFromSession(req));
+                    if (data.getUserId() == null) {
+                        throw new RuntimeException("Current user is undefined");
+                    }
+                }
                 logger.debug(data);
                 response = creatableController.processCreate(data, serviceFactory);
+                logger.debug(response);
+            } else {
+                writeError(resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, METHOD_NOT_SUPPORTED);
+                return;
+            }
+
+            if (currentController instanceof AuthenticatingController) {
+                createSession(req, response);
+            }
+
+            writeResponse(resp, response);
+
+        } catch (Exception e) {
+            logger.error(e);
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    protected void doPatch(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
+        String path = req.getServletPath() + req.getPathInfo();
+
+        try {
+            String version = extractVersionFromPath(path);
+            logger.debug("version = " + version);
+            String endpoint = extractEndpointFromPath(path);
+            logger.debug("endpoint = " + endpoint);
+
+            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION))
+                    .get(endpoint);
+
+            if (isControllerNotAccessible(req, resp, currentController)) {
+                return;
+            }
+
+            ControllerResponse<?> response;
+            if (currentController instanceof UpdatableController<?, ?> rawUpdatableController) {
+
+                IdRequest data = objectMapper.readValue(req.getInputStream(), currentController.getRequestClass());
+
+                @SuppressWarnings("unchecked")
+                UpdatableController<?, IdRequest> updatableController =
+                        (UpdatableController<?, IdRequest>) rawUpdatableController;
+                data.setId(extractIdFromPath(path));
+                if (data.getId() == null) {
+                    throw new RuntimeException("Target object is undefined");
+                }
+                logger.debug(data);
+                response = updatableController.processUpdate(data, serviceFactory);
+                logger.debug(response);
+            } else {
+                writeError(resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, METHOD_NOT_SUPPORTED);
+                return;
+            }
+
+            if (currentController instanceof AuthenticatingController) {
+                createSession(req, response);
+            }
+
+            writeResponse(resp, response);
+
+        } catch (Exception e) {
+            logger.error(e);
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
+        String path = req.getServletPath() + req.getPathInfo();
+
+        try {
+            String version = extractVersionFromPath(path);
+            logger.debug("version = " + version);
+            String endpoint = extractEndpointFromPath(path);
+            logger.debug("endpoint = " + endpoint);
+
+            Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION))
+                    .get(endpoint);
+
+            if (isControllerNotAccessible(req, resp, currentController)) {
+                return;
+            }
+
+            ControllerResponse<?> response;
+            if (currentController instanceof DeletableController<?, ?> deletableController) {
+
+                response = deletableController.processDelete(extractIdFromPath(path), serviceFactory);
                 logger.debug(response);
             } else {
                 writeError(resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, METHOD_NOT_SUPPORTED);
@@ -185,6 +299,102 @@ public class MainServletApi extends ApiHttpServlet {
             path = path.substring(0, path.length() - 1);
         }
         return path;
+    }
+
+    private Set<String> getDtoFieldNames(Class<?> dtoClass) {
+        Set<String> dtoFieldNames = new HashSet<>();
+
+        System.out.println("getDtoClass = " + dtoClass);
+        Field[] allFields = dtoClass.getDeclaredFields();
+        System.out.println("getFields = " + Arrays.toString(allFields));
+        for (Field field : allFields) {
+            field.setAccessible(true); // make private fields accessible
+            System.out.println(field.getName());
+            dtoFieldNames.add(field.getName());
+        }
+
+        if (dtoFieldNames.isEmpty()) {
+            throw new RuntimeException("Имена полей не найдены в DTO");
+        }
+        return dtoFieldNames;
+    }
+
+    private GetRequest parseQueryParameters(Map<String, String[]> queryParams, Set<String> dtoFieldNames) {
+
+//        System.out.println("queryParams = " + queryParams);
+//        for (Map.Entry<String, String[]> entry : queryParams.entrySet()) {
+//            System.out.println(entry.getKey() + " = " + Arrays.toString(entry.getValue()));
+//        }
+
+        Map<String, List<String>> filterBy = new HashMap<>();
+        Map<String, Boolean> sortBy = null;
+        Integer page = null;
+        Integer size = null;
+
+
+        for (String parameter : queryParams.keySet()) {
+            String[] values = queryParams.get(parameter);
+            switch (parameter) {
+                case GetRequest.PAGE_PARAM -> {
+                    try {
+                        page = Integer.parseInt(values[0]);
+                    } catch (NumberFormatException nfe) {
+                        page = 0;
+                    }
+                }
+                case GetRequest.SIZE_PARAM -> {
+                    try {
+                        size = Integer.parseInt(values[0]);
+                    } catch (NumberFormatException nfe) {
+                        size = 10;
+                    }
+                }
+                case GetRequest.SORT_PARAM -> {
+                    sortBy = new HashMap<>();
+                    for (String value : values) {
+                        String[] split = value.split(",");
+                        if (split.length == 2) {
+                            sortBy.put(split[0], split[1].equalsIgnoreCase("asc"));
+                        }
+                    }
+
+                }
+                default -> {
+                    if (!dtoFieldNames.contains(parameter)) {
+                        throw new RuntimeException("Invalid parameter name in query");
+                    }
+                    filterBy.put(parameter, List.of(values));
+                }
+            }
+        }
+
+//        System.out.println("filterBy:");
+//        for (Map.Entry<String, Object> entry : filterBy.entrySet()) {
+//            System.out.println(entry.getKey() + " = " + entry.getValue());
+//        }
+//
+//        if (sortBy != null) {
+//            System.out.println("sortBy:");
+//            for (Map.Entry<String, Boolean> entry : sortBy.entrySet()) {
+//                System.out.println(entry.getKey() + " = " + entry.getValue());
+//            }
+//        }
+
+        GetRequest request = new GetRequest();
+
+        request.setPage(page);
+        request.setSize(size);
+        request.setFilterBy(filterBy);
+        request.setSortBy(sortBy);
+
+        System.out.println("request = " + request);
+
+//        queryParams.getOrDefault(PaginatedRequestParameters.PAGE.name(), null);
+
+//        request.setPage();
+
+
+        return request;
     }
 
     private boolean isDetailRequest(String path) {

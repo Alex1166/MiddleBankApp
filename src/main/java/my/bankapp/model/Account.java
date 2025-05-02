@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(of = {"title", "userId", "balance", "type", "isDefault"})
+@ToString(of = {"title", "userId", "balance", "type", "isDefault", "isDeleted"})
 @EqualsAndHashCode(of = {"id", "userId"})
 public class Account {
     private long id;
@@ -22,6 +22,7 @@ public class Account {
     private String title;
     private BigDecimal balance;
     private boolean isDefault;
+    private boolean isDeleted;
 
     public void setBalance(BigDecimal balance) {
         if (balance.compareTo(BigDecimal.ZERO) < 0) {

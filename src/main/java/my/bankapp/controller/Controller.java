@@ -1,15 +1,12 @@
 package my.bankapp.controller;
 
-import my.bankapp.factory.ServiceFactory;
-import my.bankapp.model.request.LoginRequest;
-import my.bankapp.model.response.ControllerResponse;
-import my.bankapp.model.response.Response;
+import my.bankapp.model.request.IdRequest;
 
-import java.util.List;
-
-public interface Controller<REQ, RESP> {
+public interface Controller<DTO, REQ extends IdRequest> {
 
     String getVersion();
+
+    Class<DTO> getDtoClass();
 
     Class<REQ> getRequestClass();
 

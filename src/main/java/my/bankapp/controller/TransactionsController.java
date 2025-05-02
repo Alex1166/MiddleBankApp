@@ -2,18 +2,19 @@ package my.bankapp.controller;
 
 import my.bankapp.dto.TransactionDto;
 import my.bankapp.factory.ServiceFactory;
+import my.bankapp.model.request.TransactionRequest;
 import my.bankapp.model.response.ControllerResponse;
 
 import java.util.List;
 
-public class TransactionsController implements ReadableController<TransactionDto, TransactionDto>, CreatableController<TransactionDto, TransactionDto>, UpdatableController<TransactionDto, TransactionDto>, DeletableController<TransactionDto, TransactionDto> {
+public class TransactionsController implements ReadableController<TransactionDto, TransactionRequest>, CreatableController<TransactionDto, TransactionRequest>, UpdatableController<TransactionDto, TransactionRequest>, DeletableController<TransactionDto, TransactionRequest> {
     @Override
     public ControllerResponse<List<TransactionDto>> processGetAll(long id, ServiceFactory serviceFactory) {
         return null;
     }
 
     @Override
-    public ControllerResponse<TransactionDto> processUpdate(TransactionDto request, ServiceFactory serviceFactory) {
+    public ControllerResponse<TransactionDto> processUpdate(TransactionRequest request, ServiceFactory serviceFactory) {
         return null;
     }
 
@@ -28,8 +29,18 @@ public class TransactionsController implements ReadableController<TransactionDto
     }
 
     @Override
-    public ControllerResponse<TransactionDto> processCreate(TransactionDto request, ServiceFactory serviceFactory) {
-        return new ControllerResponse<>(true, 202, "application/json", serviceFactory.getTransactionService().transferMoney(request));
+    public ControllerResponse<TransactionDto> processCreate(TransactionRequest request, ServiceFactory serviceFactory) {
+        TransactionDto transactionDto = new TransactionDto();
+        if (request.getSenderAccountId() != null) {
+            transactionDto.setSenderAccountId(request.getSenderAccountId());
+        }
+        if (request.getRecipientAccountId() != null) {
+            transactionDto.setRecipientAccountId(request.getRecipientAccountId());
+        }
+        if (request.getMoney() != null) {
+            transactionDto.setMoney(request.getMoney());
+        }
+        return new ControllerResponse<>(true, 202, "application/json", serviceFactory.getTransactionService().transferMoney(transactionDto));
     }
 
     @Override
@@ -38,8 +49,13 @@ public class TransactionsController implements ReadableController<TransactionDto
     }
 
     @Override
-    public Class<TransactionDto> getRequestClass() {
+    public Class<TransactionDto> getDtoClass() {
         return TransactionDto.class;
+    }
+
+    @Override
+    public Class<TransactionRequest> getRequestClass() {
+        return TransactionRequest.class;
     }
 
     @Override

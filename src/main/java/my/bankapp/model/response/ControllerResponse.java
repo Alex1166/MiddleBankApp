@@ -1,8 +1,7 @@
 package my.bankapp.model.response;
 
 import lombok.Data;
-
-import java.util.Map;
+import lombok.Value;
 
 @Data
 public class ControllerResponse<DTO> {

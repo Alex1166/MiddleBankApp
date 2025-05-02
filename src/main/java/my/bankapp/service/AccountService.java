@@ -4,6 +4,7 @@ import my.bankapp.dao.AccountDao;
 import my.bankapp.dto.AccountDto;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
+import my.bankapp.model.request.GetRequest;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -25,24 +26,24 @@ public class AccountService {
 
     public AccountDto toDto(Account account) throws IllegalArgumentException {
         return new AccountDto(account.getId(), account.getUserId(), account.getType(), account.getTitle(), account.getBalance(),
-                account.isDefault());
+                account.isDefault(), account.isDeleted());
     }
 
     public Account fromDto(AccountDto accountDto) throws IllegalArgumentException {
         return new Account(accountDto.getId(), accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(),
-                accountDto.isDefault());
+                accountDto.isDefault(), accountDto.isDeleted());
     }
 
     public AccountDto createAccount(long userId, int accountType, String title) throws IllegalArgumentException {
 
-        Account account = new Account(-1, userId, accountType, title, new BigDecimal("0"), false);
+        Account account = new Account(-1, userId, accountType, title, new BigDecimal("0"), false, false);
 
         return toDto(accountDao.insert(account));
     }
 
     public AccountDto createAccount(AccountDto accountDto) throws IllegalArgumentException {
 
-        Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(), false);
+        Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), new BigDecimal("0"), false, false);
 
         return toDto(accountDao.insert(account));
     }
@@ -63,16 +64,42 @@ public class AccountService {
         return accountDao.findAllByUserId(userId).map(this::toDto).collect(Collectors.toList());
     }
 
+    public List<AccountDto> getAccountList(GetRequest request) {
+        request.getFilterBy().put("userId", List.of(String.valueOf(request.getUserId())));
+        return accountDao.findAllByParameters(request).map(this::toDto).collect(Collectors.toList());
+    }
+
     public Map<Long, AccountDto> getAccountMap(long userId) {
         return accountDao.findAllByUserId(userId).collect(Collectors.toMap(Account::getId, this::toDto));
     }
 
     public AccountDto updateAccount(AccountDto accountDto) {
+
+        if (accountDto.isDefault()) {
+            accountDao.updateAccountsDefault(fromDto(accountDto));
+        }
         return toDto(accountDao.update(fromDto(accountDto)));
     }
 
-    public AccountDto setUserDefaultAccount(AccountDto accountDto) throws RuntimeException {
+    public boolean deleteAccount(long accountId) throws IllegalArgumentException {
+        AccountDto accountDto = getAccountById(accountId);
+        accountDto.setDeleted(true);
+        accountDao.update(fromDto(accountDto));
+//        if (accountDao.delete(accountId)) {
+        if (accountDto.isDefault()) {
+            List<AccountDto> accountList = getAccountList(accountDto.getUserId());
+            if (!accountList.isEmpty()) {
+                accountDto = getAccountById(accountList.get(0).getId());
+                accountDto.setDefault(true);
+                updateAccount(accountDto);
+            }
+        }
+        return true;
+//        }
+//        return false;
+    }
 
+    public AccountDto setUserDefaultAccount(AccountDto accountDto) throws RuntimeException {
 
         Connection connection = null;
         RuntimeException mainException = null;
