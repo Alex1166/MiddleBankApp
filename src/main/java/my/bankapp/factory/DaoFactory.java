@@ -2,15 +2,15 @@ package my.bankapp.factory;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.Setter;
 import my.bankapp.dao.AccountDao;
 import my.bankapp.dao.TransactionDao;
 import my.bankapp.dao.UserDao;
+import org.apache.logging.log4j.Logger;
 
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -19,88 +19,105 @@ import java.util.Properties;
 
 public class DaoFactory {
 
-//    private DaoBank dataBaseService;
-    private UserDao userDao;
-    private AccountDao accountDao;
-    private TransactionDao transactionDao;
-    private HikariDataSource dataSource;
+    private final Logger logger;
+    private volatile UserDao userDao;
+    private volatile AccountDao accountDao;
+    private volatile TransactionDao transactionDao;
+    @Setter
+    private volatile HikariDataSource dataSource;
+    private final HikariConfig config;
 
-//    public DaoBank getDataBaseService() {
-//        if (dataBaseService == null) {
-//            dataBaseService = new DataBaseService(getDataSource());
-//        }
-//        return dataBaseService;
-//    }
+    public DaoFactory(Properties properties) {
+        this.logger = ServiceFactory.createLogger(DaoFactory.class);
+        this.config = new HikariConfig(properties);
+    }
+
+    public DaoFactory() {
+        this(loadDefaultProperties());
+    }
+
+    private static Properties loadDefaultProperties() {
+        Properties props = new Properties();
+        try (InputStream input = DaoFactory.class.getClassLoader().getResourceAsStream("hikari.properties")) {
+            if (input == null) {
+                throw new FileNotFoundException("hikari.properties not found");
+            }
+            props.load(input);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load Hikari properties", e);
+        }
+        return props;
+    }
 
     public UserDao getUserDao() {
         if (userDao == null) {
-            userDao = new UserDao(this);
+            synchronized (this) {
+                if (userDao == null) {
+                    userDao = new UserDao(this);
+                }
+            }
         }
         return userDao;
     }
 
     public AccountDao getAccountDao() {
         if (accountDao == null) {
-            accountDao = new AccountDao(this);
+            synchronized (this) {
+                if (accountDao == null) {
+                    accountDao = new AccountDao(this);
+                }
+            }
         }
         return accountDao;
     }
 
     public TransactionDao getTransactionDao() {
         if (transactionDao == null) {
-            transactionDao = new TransactionDao(this);
+            synchronized (this) {
+                if (transactionDao == null) {
+                    transactionDao = new TransactionDao(this);
+                }
+            }
         }
         return transactionDao;
     }
 
     public HikariDataSource getDataSource() {
         if (dataSource == null) {
-            try {
-                Properties props = new Properties();
-                props.load(DaoFactory.class.getClassLoader().getResourceAsStream("hikari.properties"));
-
-                HikariConfig config = new HikariConfig(props);
-                dataSource = new HikariDataSource(config);
-                try (
-                     Connection conn = dataSource.getConnection();
-                     Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery("SELECT version()")) {
-
-                    if (rs.next()) {
-                        System.out.println("PostgreSQL version: " + rs.getString(1));
-
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+            synchronized (this) {
+                if (dataSource == null) {
+                    dataSource = new HikariDataSource(config);
+                    testDatabaseConnection(dataSource);
                 }
-
-            } catch (Exception e) {
-                System.out.println("e = " + e);
-                e.printStackTrace();
-                throw new RuntimeException("Unable to load DB config", e);
             }
         }
         return dataSource;
     }
 
-//    public DataSource getDataSource() {
-//        if (dataSource == null) {
-//            try {
-//                Context initCtx = new InitialContext();
-//                dataSource = (DataSource) initCtx.lookup("java:comp/env/jdbc/PostgresDB");
-//            } catch (NamingException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//        return dataSource;
-//    }
+    private void testDatabaseConnection(HikariDataSource ds) {
+        try (
+                Connection conn = ds.getConnection();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT now()")) {
+
+            if (rs.next()) {
+                logger.info("PostgreSQL version: " + rs.getString(1));
+            } else {
+                logger.warn("Could not retrieve PostgreSQL version.");
+                throw new IllegalStateException("Failed to retrieve PostgreSQL version. Database might be corrupted or unreachable.");
+            }
+        } catch (Exception e) {
+            logger.error("Database test failed", e);
+            throw new RuntimeException("Failed to verify DB connection", e);
+        }
+    }
 
     public Connection getConnection() throws SQLException {
         return getDataSource().getConnection();
     }
 
     public void closeDataSource() {
-        if (dataSource != null) {
+        if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
         }
     }

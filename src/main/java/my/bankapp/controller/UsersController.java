@@ -1,6 +1,8 @@
 package my.bankapp.controller;
 
 import my.bankapp.dto.UserDto;
+import my.bankapp.exception.IdentifierNotProvidedException;
+import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.UserRequest;
 import my.bankapp.model.response.ControllerResponse;
@@ -18,7 +20,12 @@ public class UsersController implements ReadableController<UserDto, UserRequest>
     @Override
     public ControllerResponse<UserDto> processUpdate(UserRequest request, ServiceFactory serviceFactory) {
         System.out.println("UsersController processUpdate");
-        UserDto userDto = serviceFactory.getUserService().getUserById(request.getId());
+
+        if (request.getId() == null) {
+            throw new IdentifierNotProvidedException("Id of user to update was not provided");
+        }
+
+        UserDto userDto = serviceFactory.getUserService().getUserById(request.getId()).orElseThrow(() -> new UserNotFoundException("User with id %s not found".formatted(request.getId())));
         if (request.getName() != null) {
             userDto.setName(request.getName());
         }
@@ -31,7 +38,8 @@ public class UsersController implements ReadableController<UserDto, UserRequest>
             userDto.setPassword(null);
         }
         System.out.println("userDto = " + userDto);
-        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().updateUser(userDto));
+        serviceFactory.getUserService().updateUser(userDto);
+        return new ControllerResponse<>(true, 200, "application/json", userDto);
     }
 
     @Override
@@ -47,7 +55,13 @@ public class UsersController implements ReadableController<UserDto, UserRequest>
     @Override
     public ControllerResponse<UserDto> processGet(long id, ServiceFactory serviceFactory) {
         System.out.println("UsersController processGet");
-        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().getUserById(id));
+
+        if (serviceFactory.getUserService().getUserById(id).isPresent()) {
+            return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().getUserById(id).get());
+        } else {
+            return new ControllerResponse<>(true, 404, "application/json", null);
+        }
+
     }
 
     @Override

@@ -3,12 +3,15 @@ package my.bankapp.service;
 import my.bankapp.dao.UserDao;
 import my.bankapp.dto.AccountDto;
 import my.bankapp.dto.UserDto;
+import my.bankapp.exception.AccountNotFoundException;
+import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 import my.bankapp.model.User;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 public class UserService {
 
@@ -26,29 +29,40 @@ public class UserService {
     }
 
     public User fromDto(UserDto userDto) throws IllegalArgumentException {
-        return new User(userDto.getId(), userDto.getLogin(), userDto.getName(), userDto.getPassword(), userDto.isDeleted());
+        return new User(userDto.getId(), userDto.getLogin(), userDto.getName(), userDto.getPassword(), userDto.getIsDeleted());
     }
 
-    public UserDto getUserByLogin(String login) throws RuntimeException {
-        return toDto(userDao.findByLogin(login));
+    public Optional<UserDto> getUserByLogin(String login) throws RuntimeException {
+        if (userDao.findByLogin(login).isPresent()) {
+            return Optional.ofNullable(toDto(userDao.findByLogin(login).get()));
+        } else {
+            return Optional.empty();
+        }
     }
 
-    public UserDto getUserById(long userId) throws RuntimeException {
-        return toDto(userDao.findById(userId));
+    public Optional<UserDto>  getUserById(long userId) throws RuntimeException {
+        if (userDao.findById(userId).isPresent()) {
+            return Optional.ofNullable(toDto(userDao.findById(userId).get()));
+        } else {
+            return Optional.empty();
+        }
     }
 
-    public UserDto updateUser(UserDto userDto) {
+    public void updateUser(UserDto userDto) {
         if (userDto.getPassword() != null) {
             userDto.setPassword(DigestUtils.md5Hex(userDto.getPassword()));
             userDao.setUserPassword(fromDto(userDto));
         }
-        return toDto(userDao.update(fromDto(userDto)));
+        userDao.update(fromDto(userDto));
     }
 
     public boolean deleteUser(long userId) throws IllegalArgumentException {
-        UserDto userDto = getUserById(userId);
-        userDto.setDeleted(true);
-        userDao.update(fromDto(userDto));
+        Optional<UserDto> userDto = getUserById(userId);
+        if (userDto.isEmpty()) {
+            return false;
+        }
+        userDto.get().setIsDeleted(true);
+        userDao.update(fromDto(userDto.get()));
         List<Account> accountList = daoFactory.getAccountDao().findAllByUserId(userId).toList();
         if (!accountList.isEmpty()) {
             for (Account account : accountList) {
@@ -79,9 +93,9 @@ public class UserService {
 
     public boolean isPasswordCorrect(String login, String password) throws RuntimeException {
 
-        UserDto user = getUserByLogin(login);
+        Optional<UserDto> user = getUserByLogin(login);
 
-        String hash = userDao.getUserPassword(fromDto(user));
+        String hash = userDao.getUserPassword(fromDto(user.orElseThrow(() -> new UserNotFoundException("User with login %s not found".formatted(login)))));
 
         return hash.equals(DigestUtils.md5Hex(password));
     }

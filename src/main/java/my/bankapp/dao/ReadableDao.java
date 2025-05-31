@@ -2,11 +2,12 @@ package my.bankapp.dao;
 
 import my.bankapp.model.request.GetRequest;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public interface ReadableDao<MODEL> {
 
-    MODEL findById(long id);
+    Optional<MODEL> findById(long id);
 
     Stream<MODEL> findAll();
 

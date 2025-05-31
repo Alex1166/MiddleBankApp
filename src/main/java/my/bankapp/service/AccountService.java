@@ -2,16 +2,22 @@ package my.bankapp.service;
 
 import my.bankapp.dao.AccountDao;
 import my.bankapp.dto.AccountDto;
+import my.bankapp.exception.DaoException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
+import my.bankapp.model.request.ConditionOperator;
 import my.bankapp.model.request.GetRequest;
+import my.bankapp.model.request.RequestCondition;
+import my.bankapp.model.request.RequestOperation;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class AccountService {
@@ -19,31 +25,38 @@ public class AccountService {
     private final AccountDao accountDao;
     private final DaoFactory daoFactory;
 
+    private static final long CASH_ACCOUNT_ID = -1L;
+
     public AccountService(DaoFactory daoFactory) {
         this.daoFactory = daoFactory;
         this.accountDao = daoFactory.getAccountDao();
     }
 
-    public AccountDto toDto(Account account) throws IllegalArgumentException {
+    public AccountDto toDto(Account account) {
         return new AccountDto(account.getId(), account.getUserId(), account.getType(), account.getTitle(), account.getBalance(),
                 account.isDefault(), account.isDeleted());
     }
 
-    public Account fromDto(AccountDto accountDto) throws IllegalArgumentException {
+    public Account fromDto(AccountDto accountDto) {
         return new Account(accountDto.getId(), accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(),
-                accountDto.isDefault(), accountDto.isDeleted());
+                accountDto.getIsDefault(), accountDto.getIsDeleted());
     }
 
-    public AccountDto createAccount(long userId, int accountType, String title) throws IllegalArgumentException {
+    public AccountDto createAccount(long userId, int accountType, String title) {
 
         Account account = new Account(-1, userId, accountType, title, new BigDecimal("0"), false, false);
 
         return toDto(accountDao.insert(account));
     }
 
-    public AccountDto createAccount(AccountDto accountDto) throws IllegalArgumentException {
+    public AccountDto createAccount(AccountDto accountDto) {
 
         Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), new BigDecimal("0"), false, false);
+
+        List<AccountDto> accountList = getAccountList(accountDto.getUserId());
+        if (accountList.isEmpty()) {
+            account.setDefault(true);
+        }
 
         return toDto(accountDao.insert(account));
     }
@@ -52,12 +65,16 @@ public class AccountService {
 //        return accountDao.createNewAccount(user.getId(), accountType, new Money("0"), title);
 //    }
 
-    public AccountDto getAccountById(long accountId) throws IllegalArgumentException {
-        return toDto(accountDao.findById(accountId));
+    public Optional<AccountDto> getAccountById(long accountId) {
+        if (accountDao.findById(accountId).isPresent()) {
+            return Optional.ofNullable(toDto(accountDao.findById(accountId).get()));
+        } else {
+            return Optional.empty();
+        }
     }
 
-    public AccountDto getCashAccount() throws IllegalArgumentException {
-        return getAccountById(-1);
+    public Optional<AccountDto> getCashAccount() {
+        return getAccountById(CASH_ACCOUNT_ID);
     }
 
     public List<AccountDto> getAccountList(long userId) {
@@ -65,7 +82,15 @@ public class AccountService {
     }
 
     public List<AccountDto> getAccountList(GetRequest request) {
-        request.getFilterBy().put("userId", List.of(String.valueOf(request.getUserId())));
+        RequestOperation requestOperation = new RequestOperation();
+        requestOperation.setOrOperation(false);
+        requestOperation.setConditionList(new ArrayList<>());
+
+        RequestCondition requestCondition = new RequestCondition("userId", String.valueOf(request.getUserId()), Long.class, ConditionOperator.EQ);
+
+        requestOperation.getConditionList().add(requestCondition);
+
+        request.getFilterBy().add(requestOperation);
         return accountDao.findAllByParameters(request).map(this::toDto).collect(Collectors.toList());
     }
 
@@ -73,25 +98,34 @@ public class AccountService {
         return accountDao.findAllByUserId(userId).collect(Collectors.toMap(Account::getId, this::toDto));
     }
 
-    public AccountDto updateAccount(AccountDto accountDto) {
+    public void updateAccount(AccountDto accountDto) {
 
-        if (accountDto.isDefault()) {
-            accountDao.updateAccountsDefault(fromDto(accountDto));
+        Account account = fromDto(accountDto);
+
+        if (accountDto.getIsDefault()) {
+            accountDao.updateDefaultAccount(account);
         }
-        return toDto(accountDao.update(fromDto(accountDto)));
+        accountDao.update(account);
     }
 
-    public boolean deleteAccount(long accountId) throws IllegalArgumentException {
-        AccountDto accountDto = getAccountById(accountId);
-        accountDto.setDeleted(true);
-        accountDao.update(fromDto(accountDto));
+    public boolean deleteAccount(long accountId) {
+        Optional<AccountDto> accountDto = getAccountById(accountId);
+
+        if (accountDto.isEmpty()) {
+            return false;
+        }
+
+        accountDto.get().setIsDefault(true);
+        accountDao.update(fromDto(accountDto.get()));
 //        if (accountDao.delete(accountId)) {
-        if (accountDto.isDefault()) {
-            List<AccountDto> accountList = getAccountList(accountDto.getUserId());
+        if (accountDto.get().getIsDefault()) {
+            List<AccountDto> accountList = getAccountList(accountDto.get().getUserId());
             if (!accountList.isEmpty()) {
                 accountDto = getAccountById(accountList.get(0).getId());
-                accountDto.setDefault(true);
-                updateAccount(accountDto);
+                if (accountDto.isPresent()) {
+                    accountDto.get().setIsDefault(true);
+                    updateAccount(accountDto.get());
+                }
             }
         }
         return true;
@@ -99,11 +133,11 @@ public class AccountService {
 //        return false;
     }
 
-    public AccountDto setUserDefaultAccount(AccountDto accountDto) throws RuntimeException {
+    public AccountDto setUserDefaultAccount(AccountDto accountDto) {
 
         Connection connection = null;
         RuntimeException mainException = null;
-        Account account = null;
+        Account account = fromDto(accountDto);
 
         BigDecimal currentBalance = null;
 
@@ -115,14 +149,16 @@ public class AccountService {
                 statement.execute("SET LOCAL lock_timeout = '5s';");
             }
 
-            account = accountDao.updateAccountsDefault(fromDto(accountDto));
+            accountDao.updateAccountsDefault(account);
 
             account.setDefault(true);
 
-            account = accountDao.update(account);
+            accountDao.update(account);
 
-        } catch (SQLException | RuntimeException sqle) {
-            mainException = new RuntimeException("Unable to perform operation", sqle);
+            connection.commit();
+
+        } catch (SQLException sqle) {
+            mainException = new DaoException("Unable to perform operation", sqle);
             if (connection != null) {
                 try {
                     connection.rollback();

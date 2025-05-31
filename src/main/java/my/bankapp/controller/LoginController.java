@@ -6,6 +6,7 @@ import my.bankapp.model.request.LoginRequest;
 import my.bankapp.model.response.ControllerResponse;
 
 import java.util.List;
+import java.util.Optional;
 
 public class LoginController implements CreatableController<UserDto, LoginRequest>, AuthenticatingController {
     @Override
@@ -15,12 +16,13 @@ public class LoginController implements CreatableController<UserDto, LoginReques
 
 
         if (serviceFactory.getUserService().isPasswordCorrect(request.getLogin(), request.getPassword())) {
-            UserDto user = serviceFactory.getUserService().getUserByLogin(request.getLogin());
-
-            return new ControllerResponse<>(true, 200, "application/json", user);
+            if (serviceFactory.getUserService().getUserByLogin(request.getLogin()).isPresent()) {
+                return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().getUserByLogin(request.getLogin()).get());
+            } else {
+                return new ControllerResponse<>(true, 404, "application/json", null);
+            }
         } else {
-//            return new Response(false, null);
-            return new ControllerResponse<>(false, 200, "application/json", null);
+            return new ControllerResponse<>(true, 401, "application/json", null);
 
         }
     }

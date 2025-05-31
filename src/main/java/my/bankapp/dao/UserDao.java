@@ -1,16 +1,15 @@
 package my.bankapp.dao;
 
 import my.bankapp.factory.DaoFactory;
-import my.bankapp.model.Transaction;
 import my.bankapp.model.User;
 import my.bankapp.model.request.GetRequest;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class UserDao implements CreatableDao<User>, ReadableDao<User>, UpdatableDao<User>, DeletableDao<User> {
@@ -21,7 +20,7 @@ public class UserDao implements CreatableDao<User>, ReadableDao<User>, Updatable
     }
 
     @Override
-    public User findById(long id) {
+    public Optional<User> findById(long id) {
 
         User user = null;
         String sql = "SELECT users.id AS uid, users.login, users.name, users.is_deleted, credentials.password FROM users " +
@@ -42,18 +41,14 @@ public class UserDao implements CreatableDao<User>, ReadableDao<User>, Updatable
                         resultSet.getString("name"),
                         resultSet.getString("password"), resultSet.getBoolean("is_deleted"));
             }
+
+            return Optional.ofNullable(user);
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to get user %s", id), sqle);
         }
-
-        if (user == null) {
-            throw new RuntimeException(String.format("User %s not found", id));
-        }
-
-        return user;
     }
 
-    public User findByLogin(String login) {
+    public Optional<User> findByLogin(String login) {
 
         User user = null;
         String sql = "SELECT users.id AS uid, users.login, users.name, users.is_deleted, credentials.password FROM users " +
@@ -74,15 +69,11 @@ public class UserDao implements CreatableDao<User>, ReadableDao<User>, Updatable
                         resultSet.getString("name"),
                         resultSet.getString("password"), resultSet.getBoolean("is_deleted"));
             }
+
+            return Optional.ofNullable(user);
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to get user %s", login), sqle);
         }
-
-        if (user == null) {
-            throw new RuntimeException(String.format("User %s not found", login));
-        }
-
-        return user;
     }
 
     @Override
@@ -177,7 +168,7 @@ public class UserDao implements CreatableDao<User>, ReadableDao<User>, Updatable
     }
 
     @Override
-    public User update(User user) {
+    public void update(User user) {
 
         String sql = "UPDATE users SET login=?, name=?, is_deleted=? WHERE id=?;";
         try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -188,14 +179,12 @@ public class UserDao implements CreatableDao<User>, ReadableDao<User>, Updatable
             statement.setLong(4, user.getId());
 
             if (statement.executeUpdate() == 0) {
-                throw new RuntimeException(String.format("Unable to update user %s", user.getId()));
+                throw new RuntimeException(String.format("User %s not found", user.getId()));
             }
 
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to update user %s", user.getId()), sqle);
         }
-
-        return user;
     }
 
     @Override

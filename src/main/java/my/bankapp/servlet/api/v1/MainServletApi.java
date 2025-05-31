@@ -14,9 +14,11 @@ import my.bankapp.controller.ReadableController;
 import my.bankapp.controller.UpdatableController;
 import my.bankapp.dto.UserDto;
 import my.bankapp.factory.ServiceFactory;
-import my.bankapp.model.request.AccountRequest;
+import my.bankapp.model.request.ConditionOperator;
 import my.bankapp.model.request.GetRequest;
 import my.bankapp.model.request.IdRequest;
+import my.bankapp.model.request.RequestCondition;
+import my.bankapp.model.request.RequestOperation;
 import my.bankapp.model.response.ControllerResponse;
 import org.apache.logging.log4j.Logger;
 
@@ -25,14 +27,13 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// TODO: tests, factory, jwt
+// TODO: tests, jwt
 
 @WebServlet(urlPatterns = "/api/*")
 public class MainServletApi extends ApiHttpServlet {
@@ -65,7 +66,7 @@ public class MainServletApi extends ApiHttpServlet {
         }
 
         this.objectMapper = new ObjectMapper();
-        this.logger = serviceFactory.getLogger();
+        this.logger = ServiceFactory.createLogger(MainServletApi.class);
     }
 
     @Override
@@ -100,9 +101,9 @@ public class MainServletApi extends ApiHttpServlet {
             if (currentController instanceof ReadableController<?, ?> readableController) {
                 if (isGetAll) {
 
-                    Set<String> fieldNames = getDtoFieldNames(currentController.getDtoClass());
+                    Map<String, Class<?>> dtoFields = getDtoFieldNames(currentController.getDtoClass());
 
-                    GetRequest request = parseQueryParameters(req.getParameterMap(), fieldNames);
+                    GetRequest request = parseQueryParameters(req.getParameterMap(), dtoFields);
                     request.setUserId(extractIdFromSession(req));
 
                     response = readableController.processGetAll(request, serviceFactory);
@@ -172,7 +173,7 @@ public class MainServletApi extends ApiHttpServlet {
             writeResponse(resp, response);
 
         } catch (Exception e) {
-            logger.error(e);
+            logger.trace(e);
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -301,32 +302,33 @@ public class MainServletApi extends ApiHttpServlet {
         return path;
     }
 
-    private Set<String> getDtoFieldNames(Class<?> dtoClass) {
-        Set<String> dtoFieldNames = new HashSet<>();
+    private Map<String, Class<?>> getDtoFieldNames(Class<?> dtoClass) {
+        Map<String, Class<?>> dtoFields = new HashMap<>();
 
         System.out.println("getDtoClass = " + dtoClass);
         Field[] allFields = dtoClass.getDeclaredFields();
         System.out.println("getFields = " + Arrays.toString(allFields));
         for (Field field : allFields) {
             field.setAccessible(true); // make private fields accessible
-            System.out.println(field.getName());
-            dtoFieldNames.add(field.getName());
+            System.out.println(field.getName() + " " + field.getType());
+            dtoFields.put(field.getName(), field.getType());
         }
 
-        if (dtoFieldNames.isEmpty()) {
+        if (dtoFields.isEmpty()) {
             throw new RuntimeException("Имена полей не найдены в DTO");
         }
-        return dtoFieldNames;
+        return dtoFields;
     }
 
-    private GetRequest parseQueryParameters(Map<String, String[]> queryParams, Set<String> dtoFieldNames) {
+    private GetRequest parseQueryParameters(Map<String, String[]> queryParams, Map<String, Class<?>> dtoFields) {
 
 //        System.out.println("queryParams = " + queryParams);
 //        for (Map.Entry<String, String[]> entry : queryParams.entrySet()) {
 //            System.out.println(entry.getKey() + " = " + Arrays.toString(entry.getValue()));
 //        }
 
-        Map<String, List<String>> filterBy = new HashMap<>();
+//        Map<String, List<String>> filterBy = new HashMap<>();
+        List<RequestOperation> filterBy = new ArrayList<>();
         Map<String, Boolean> sortBy = null;
         Integer page = null;
         Integer size = null;
@@ -360,10 +362,49 @@ public class MainServletApi extends ApiHttpServlet {
 
                 }
                 default -> {
-                    if (!dtoFieldNames.contains(parameter)) {
-                        throw new RuntimeException("Invalid parameter name in query");
+                    String[] params = parameter.split("\\|");
+
+                    RequestOperation requestOperation = new RequestOperation();
+                    requestOperation.setOrOperation(params.length > 1 || values.length > 1);
+                    requestOperation.setConditionList(new ArrayList<>());
+
+                    System.out.println("parameter = " + parameter);
+
+                    for (String param : params) {
+                        System.out.println("param = " + param);
+                        if (!dtoFields.containsKey(param)) {
+                            throw new RuntimeException("Invalid parameter name in query");
+                        }
+//                    filterBy.put(parameter, List.of(values));
+//                        tmpMap.put(param, List.of(values));
+
+                        for (String value : values) {
+                            System.out.println("    value = " + value);
+
+//                    filterBy.put(parameter, List.of(values));
+//                            tmpMap.put(param, List.of(values));
+
+                            String[] valueSplit = value.split(",");
+                            if (valueSplit.length < 2) {
+                                throw new RuntimeException("Invalid condition");
+                            }
+
+                            if (!isValidValue(valueSplit[0], dtoFields.get(param))) {
+                                throw new RuntimeException("Invalid value type");
+                            }
+
+                            RequestCondition requestCondition = new RequestCondition(param, valueSplit[0], dtoFields.get(param),
+                                    ConditionOperator.fromString(valueSplit[1]));
+
+                            requestOperation.getConditionList().add(requestCondition);
+
+//                            Map<String, List<String>> tmpMap = new HashMap<>();
+//                            requestCondition.setParameterValues(tmpMap);
+                        }
                     }
-                    filterBy.put(parameter, List.of(values));
+
+                    filterBy.add(requestOperation);
+
                 }
             }
         }
@@ -395,6 +436,34 @@ public class MainServletApi extends ApiHttpServlet {
 
 
         return request;
+    }
+
+    private static final Map<Class<?>, Function<String, ?>> typeValidationParsers = Map.of(
+            String.class, s -> s,
+            Integer.class, Integer::parseInt,
+            int.class, Integer::parseInt,
+            Long.class, Long::parseLong,
+            long.class, Long::parseLong,
+            Boolean.class, Boolean::parseBoolean,
+            boolean.class, Boolean::parseBoolean,
+            Double.class, Double::parseDouble,
+            double.class, Double::parseDouble
+    );
+
+    private boolean isValidValue(String value, Class<?> type) {
+
+        Function<String, ?> parser = typeValidationParsers.get(type);
+
+        if (parser == null) {
+            return false;
+        }
+
+        try {
+            parser.apply(value);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
     }
 
     private boolean isDetailRequest(String path) {

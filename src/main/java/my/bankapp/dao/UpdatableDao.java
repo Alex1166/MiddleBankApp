@@ -6,5 +6,5 @@ import java.util.stream.Stream;
 
 public interface UpdatableDao<MODEL> {
 
-    MODEL update(MODEL model);
+    void update(MODEL model);
 }

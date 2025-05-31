@@ -1,7 +1,6 @@
 package my.bankapp.servlet;
 
 import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,7 +9,6 @@ import my.bankapp.factory.ServiceFactory;
 import my.bankapp.service.UserService;
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
 import java.util.Enumeration;
 
 @WebServlet(urlPatterns = "/error")
@@ -31,7 +29,7 @@ public class ErrorServlet extends HttpServlet {
         }
 
         userService = serviceFactory.getUserService();
-        logger = serviceFactory.getLogger();
+        logger = serviceFactory.createLogger(ErrorServlet.class);
     }
 
     @Override
