@@ -13,6 +13,7 @@ import my.bankapp.controller.DeletableController;
 import my.bankapp.controller.ReadableController;
 import my.bankapp.controller.UpdatableController;
 import my.bankapp.dto.UserDto;
+import my.bankapp.dto.UserReadDto;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.ConditionOperator;
 import my.bankapp.model.request.GetRequest;
@@ -101,7 +102,7 @@ public class MainServletApi extends ApiHttpServlet {
             if (currentController instanceof ReadableController<?, ?> readableController) {
                 if (isGetAll) {
 
-                    Map<String, Class<?>> dtoFields = getDtoFieldNames(currentController.getDtoClass());
+                    Map<String, Class<?>> dtoFields = getDtoFieldNames(readableController.getReadableDtoClass());
 
                     GetRequest request = parseQueryParameters(req.getParameterMap(), dtoFields);
                     request.setUserId(extractIdFromSession(req));
@@ -136,6 +137,15 @@ public class MainServletApi extends ApiHttpServlet {
             logger.debug("version = " + version);
             String endpoint = extractEndpointFromPath(path);
             logger.debug("endpoint = " + endpoint);
+            logger.debug(req.getPathInfo());
+            logger.debug(req.getContextPath());
+            logger.debug(req.getServletPath());
+            logger.debug(req.getQueryString());
+
+            if (!checkEndpointHasNoId(path, endpoint)) {
+                writeError(resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, METHOD_NOT_SUPPORTED);
+                return;
+            }
 
             Controller<?, ?> currentController = versionedControllerMap.getOrDefault(version, versionedControllerMap.get(FULL_STABLE_VERSION))
                     .get(endpoint);
@@ -147,17 +157,17 @@ public class MainServletApi extends ApiHttpServlet {
             ControllerResponse<?> response;
             if (currentController instanceof CreatableController<?, ?> rawCreatableController) {
 
-                IdRequest data = objectMapper.readValue(req.getInputStream(), currentController.getRequestClass());
+                Object data = objectMapper.readValue(req.getInputStream(), rawCreatableController.getCreatableRequestClass());
 
                 @SuppressWarnings("unchecked")
-                CreatableController<?, IdRequest> creatableController =
-                        (CreatableController<?, IdRequest>) rawCreatableController;
-                if (!(currentController instanceof AuthenticatingController) && data.getUserId() == null) {
-                    data.setUserId(extractIdFromSession(req));
-                    if (data.getUserId() == null) {
-                        throw new RuntimeException("Current user is undefined");
-                    }
-                }
+                CreatableController<?, Object> creatableController =
+                        (CreatableController<?, Object>) rawCreatableController;
+//                if (!(currentController instanceof AuthenticatingController) && data.getUserId() == null) {
+//                    data.setUserId(extractIdFromSession(req));
+//                    if (data.getUserId() == null) {
+//                        throw new RuntimeException("Current user is undefined");
+//                    }
+//                }
                 logger.debug(data);
                 response = creatableController.processCreate(data, serviceFactory);
                 logger.debug(response);
@@ -199,17 +209,17 @@ public class MainServletApi extends ApiHttpServlet {
             ControllerResponse<?> response;
             if (currentController instanceof UpdatableController<?, ?> rawUpdatableController) {
 
-                IdRequest data = objectMapper.readValue(req.getInputStream(), currentController.getRequestClass());
+                Object data = objectMapper.readValue(req.getInputStream(), rawUpdatableController.getUpdatableRequestClass());
 
                 @SuppressWarnings("unchecked")
-                UpdatableController<?, IdRequest> updatableController =
-                        (UpdatableController<?, IdRequest>) rawUpdatableController;
-                data.setId(extractIdFromPath(path));
-                if (data.getId() == null) {
-                    throw new RuntimeException("Target object is undefined");
-                }
+                UpdatableController<?, Object> updatableController =
+                        (UpdatableController<?, Object>) rawUpdatableController;
+                long id = extractIdFromPath(path);
+//                if (data.getId() == null) {
+//                    throw new RuntimeException("Target object is undefined");
+//                }
                 logger.debug(data);
-                response = updatableController.processUpdate(data, serviceFactory);
+                response = updatableController.processUpdate(id, data, serviceFactory);
                 logger.debug(response);
             } else {
                 writeError(resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, METHOD_NOT_SUPPORTED);
@@ -275,10 +285,10 @@ public class MainServletApi extends ApiHttpServlet {
     }
 
     private void createSession(HttpServletRequest req, ControllerResponse<?> response) {
-        if (response.isSuccess() && response.getResult() instanceof UserDto userDto) {
+        if (response.isSuccess() && response.getResult() instanceof UserReadDto userReadDto) {
             HttpSession session;
             session = req.getSession(true);
-            session.setAttribute("userId", userDto.getId());
+            session.setAttribute("userId", userReadDto.getId());
             logger.debug("session created");
             logger.debug(session);
         }
@@ -497,6 +507,10 @@ public class MainServletApi extends ApiHttpServlet {
             return matcher.group(1);
         }
         return FULL_STABLE_VERSION;
+    }
+
+    private boolean checkEndpointHasNoId(String path, String endpoint) {
+        return path.substring(path.lastIndexOf(endpoint)).length() == endpoint.length();
     }
 
     private boolean isControllerNotAccessible(HttpServletRequest req, HttpServletResponse resp, Controller<?, ?> controller) throws IOException {

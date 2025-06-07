@@ -1,7 +1,7 @@
 package my.bankapp.service;
 
 import my.bankapp.dao.AccountDao;
-import my.bankapp.dto.AccountDto;
+import my.bankapp.dto.AccountReadDto;
 import my.bankapp.exception.DaoException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
@@ -32,28 +32,28 @@ public class AccountService {
         this.accountDao = daoFactory.getAccountDao();
     }
 
-    public AccountDto toDto(Account account) {
-        return new AccountDto(account.getId(), account.getUserId(), account.getType(), account.getTitle(), account.getBalance(),
+    public AccountReadDto toDto(Account account) {
+        return new AccountReadDto(account.getId(), account.getUserId(), account.getType(), account.getTitle(), account.getBalance(),
                 account.isDefault(), account.isDeleted());
     }
 
-    public Account fromDto(AccountDto accountDto) {
+    public Account fromDto(AccountReadDto accountDto) {
         return new Account(accountDto.getId(), accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), accountDto.getBalance(),
                 accountDto.getIsDefault(), accountDto.getIsDeleted());
     }
 
-    public AccountDto createAccount(long userId, int accountType, String title) {
+    public AccountReadDto createAccount(long userId, int accountType, String title) {
 
         Account account = new Account(-1, userId, accountType, title, new BigDecimal("0"), false, false);
 
         return toDto(accountDao.insert(account));
     }
 
-    public AccountDto createAccount(AccountDto accountDto) {
+    public AccountReadDto createAccount(AccountReadDto accountDto) {
 
         Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), new BigDecimal("0"), false, false);
 
-        List<AccountDto> accountList = getAccountList(accountDto.getUserId());
+        List<AccountReadDto> accountList = getAccountList(accountDto.getUserId());
         if (accountList.isEmpty()) {
             account.setDefault(true);
         }
@@ -65,7 +65,7 @@ public class AccountService {
 //        return accountDao.createNewAccount(user.getId(), accountType, new Money("0"), title);
 //    }
 
-    public Optional<AccountDto> getAccountById(long accountId) {
+    public Optional<AccountReadDto> getAccountById(long accountId) {
         if (accountDao.findById(accountId).isPresent()) {
             return Optional.ofNullable(toDto(accountDao.findById(accountId).get()));
         } else {
@@ -73,15 +73,15 @@ public class AccountService {
         }
     }
 
-    public Optional<AccountDto> getCashAccount() {
+    public Optional<AccountReadDto> getCashAccount() {
         return getAccountById(CASH_ACCOUNT_ID);
     }
 
-    public List<AccountDto> getAccountList(long userId) {
+    public List<AccountReadDto> getAccountList(long userId) {
         return accountDao.findAllByUserId(userId).map(this::toDto).collect(Collectors.toList());
     }
 
-    public List<AccountDto> getAccountList(GetRequest request) {
+    public List<AccountReadDto> getAccountList(GetRequest request) {
         RequestOperation requestOperation = new RequestOperation();
         requestOperation.setOrOperation(false);
         requestOperation.setConditionList(new ArrayList<>());
@@ -94,11 +94,11 @@ public class AccountService {
         return accountDao.findAllByParameters(request).map(this::toDto).collect(Collectors.toList());
     }
 
-    public Map<Long, AccountDto> getAccountMap(long userId) {
+    public Map<Long, AccountReadDto> getAccountMap(long userId) {
         return accountDao.findAllByUserId(userId).collect(Collectors.toMap(Account::getId, this::toDto));
     }
 
-    public void updateAccount(AccountDto accountDto) {
+    public void updateAccount(AccountReadDto accountDto) {
 
         Account account = fromDto(accountDto);
 
@@ -109,7 +109,7 @@ public class AccountService {
     }
 
     public boolean deleteAccount(long accountId) {
-        Optional<AccountDto> accountDto = getAccountById(accountId);
+        Optional<AccountReadDto> accountDto = getAccountById(accountId);
 
         if (accountDto.isEmpty()) {
             return false;
@@ -119,7 +119,7 @@ public class AccountService {
         accountDao.update(fromDto(accountDto.get()));
 //        if (accountDao.delete(accountId)) {
         if (accountDto.get().getIsDefault()) {
-            List<AccountDto> accountList = getAccountList(accountDto.get().getUserId());
+            List<AccountReadDto> accountList = getAccountList(accountDto.get().getUserId());
             if (!accountList.isEmpty()) {
                 accountDto = getAccountById(accountList.get(0).getId());
                 if (accountDto.isPresent()) {
@@ -133,7 +133,7 @@ public class AccountService {
 //        return false;
     }
 
-    public AccountDto setUserDefaultAccount(AccountDto accountDto) {
+    public AccountReadDto setUserDefaultAccount(AccountReadDto accountDto) {
 
         Connection connection = null;
         RuntimeException mainException = null;

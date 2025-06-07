@@ -2,13 +2,13 @@ package my.bankapp.controller;
 
 import my.bankapp.model.request.IdRequest;
 
-public interface Controller<DTO, REQ extends IdRequest> {
+public interface Controller<DTO, REQ> {
 
     String getVersion();
 
-    Class<DTO> getDtoClass();
+//    Class<DTO> getDtoClass();
 
-    Class<REQ> getRequestClass();
+//    Class<REQ> getRequestClass();
 
     String getPath();
 }

@@ -8,7 +8,7 @@ import my.bankapp.model.response.PaginatedResponse;
 
 import java.util.List;
 
-public interface ReadableController<DTO, REQ extends IdRequest> extends Controller<DTO, REQ> {
+public interface ReadableController<DTO, REQ> extends Controller<DTO, REQ> {
     default ControllerResponse<List<DTO>> processGetAll(long id, ServiceFactory serviceFactory) {
         throw new RuntimeException("Method not supported");
     };
@@ -20,4 +20,8 @@ public interface ReadableController<DTO, REQ extends IdRequest> extends Controll
     default ControllerResponse<DTO> processGet(long id, ServiceFactory serviceFactory) {
         throw new RuntimeException("Method not supported");
     };
+
+    Class<DTO> getReadableDtoClass();
+
+    Class<REQ> getReadableRequestClass();
 }

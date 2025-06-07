@@ -1,22 +1,19 @@
 package my.bankapp.controller;
 
-import my.bankapp.dto.AccountDto;
+import my.bankapp.dto.AccountCreateDto;
+import my.bankapp.dto.AccountReadDto;
 import my.bankapp.exception.AccountNotFoundException;
-import my.bankapp.exception.IdentifierNotProvidedException;
-import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.ServiceFactory;
-import my.bankapp.model.request.AccountRequest;
 import my.bankapp.model.request.GetRequest;
 import my.bankapp.model.response.ControllerResponse;
 import my.bankapp.model.response.PaginatedResponse;
 
 import java.util.List;
-import java.util.Optional;
 
-public class AccountsController implements ReadableController<AccountDto, AccountRequest>, CreatableController<AccountDto, AccountRequest>,
-        UpdatableController<AccountDto, AccountRequest>, DeletableController<AccountDto, AccountRequest> {
+public class AccountsController implements ReadableController<AccountReadDto, AccountCreateDto>, CreatableController<AccountReadDto, AccountCreateDto>,
+        UpdatableController<AccountReadDto, AccountCreateDto>, DeletableController<AccountReadDto, AccountCreateDto> {
     @Override
-    public ControllerResponse<AccountDto> processGet(long id, ServiceFactory serviceFactory) {
+    public ControllerResponse<AccountReadDto> processGet(long id, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processGet");
 
         if (serviceFactory.getAccountService().getAccountById(id).isPresent()) {
@@ -28,32 +25,32 @@ public class AccountsController implements ReadableController<AccountDto, Accoun
     }
 
     @Override
-    public ControllerResponse<AccountDto> processCreate(AccountRequest request, ServiceFactory serviceFactory) {
+    public ControllerResponse<AccountReadDto> processCreate(AccountCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processCreate");
-        AccountDto accountDto = new AccountDto();
+        AccountReadDto accountDto = new AccountReadDto();
 //        if (request.getUserId() != null) {
-            accountDto.setUserId(request.getUserId());
+        accountDto.setUserId(request.getUserId());
 //        }
 //        if (request.getType() != null) {
-            accountDto.setType(request.getType());
+        accountDto.setType(request.getType());
 //        }
 //        if (request.getTitle() != null) {
-            accountDto.setTitle(request.getTitle());
+        accountDto.setTitle(request.getTitle());
 //        }
         System.out.println("accountDto = " + accountDto);
         return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getAccountService().createAccount(accountDto));
     }
 
     @Override
-    public ControllerResponse<List<AccountDto>> processGetAll(long id, ServiceFactory serviceFactory) {
+    public ControllerResponse<List<AccountReadDto>> processGetAll(long id, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processGetAll");
         return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getAccountService().getAccountList(id));
     }
 
     @Override
-    public PaginatedResponse<List<AccountDto>> processGetAll(GetRequest request, ServiceFactory serviceFactory) {
+    public PaginatedResponse<List<AccountReadDto>> processGetAll(GetRequest request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processGetAll request");
-        List<AccountDto> accountList = serviceFactory.getAccountService().getAccountList(request);
+        List<AccountReadDto> accountList = serviceFactory.getAccountService().getAccountList(request);
         return new PaginatedResponse<>(true, 200, "application/json", accountList, request.getPage(), request.getSize(), accountList.size(),
                 accountList.size() / request.getSize());
     }
@@ -61,15 +58,19 @@ public class AccountsController implements ReadableController<AccountDto, Accoun
     ;
 
     @Override
-    public ControllerResponse<AccountDto> processUpdate(AccountRequest request, ServiceFactory serviceFactory) {
+    public ControllerResponse<AccountReadDto> processUpdate(long id, AccountCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processUpdate");
 
-        if (request.getId() == null) {
-            throw new IdentifierNotProvidedException("Id of account to update was not provided");
-        }
+//        if (request.getId() == null) {
+//            throw new IdentifierNotProvidedException("Id of account to update was not provided");
+//        }
 
-        AccountDto accountDto = serviceFactory.getAccountService().getAccountById(request.getId()).orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(request.getId())));
+        AccountReadDto accountDto = serviceFactory.getAccountService().getAccountById(id)
+                .orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(id)));
 //        AccountDto accountDto = new AccountDto();
+
+        accountDto.setId(id);
+        accountDto.setIsDeleted(false);
         if (request.getIsDefault() != null) {
             accountDto.setIsDefault(request.getIsDefault());
         }
@@ -85,7 +86,7 @@ public class AccountsController implements ReadableController<AccountDto, Accoun
     }
 
     @Override
-    public ControllerResponse<AccountDto> processDelete(long id, ServiceFactory serviceFactory) {
+    public ControllerResponse<AccountReadDto> processDelete(long id, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processDelete");
         System.out.println("id = " + id);
         if (serviceFactory.getAccountService().deleteAccount(id)) {
@@ -95,18 +96,43 @@ public class AccountsController implements ReadableController<AccountDto, Accoun
     }
 
     @Override
+    public Class<AccountReadDto> getCreatableDtoClass() {
+        return AccountReadDto.class;
+    }
+
+    @Override
+    public Class<AccountCreateDto> getCreatableRequestClass() {
+        return AccountCreateDto.class;
+    }
+
+    @Override
+    public Class<AccountReadDto> getDeletableDtoClass() {
+        return AccountReadDto.class;
+    }
+
+    @Override
+    public Class<AccountReadDto> getReadableDtoClass() {
+        return AccountReadDto.class;
+    }
+
+    @Override
+    public Class<AccountCreateDto> getReadableRequestClass() {
+        return AccountCreateDto.class;
+    }
+
+    @Override
+    public Class<AccountReadDto> getUpdatableDtoClass() {
+        return AccountReadDto.class;
+    }
+
+    @Override
+    public Class<AccountCreateDto> getUpdatableRequestClass() {
+        return AccountCreateDto.class;
+    }
+
+    @Override
     public String getVersion() {
         return "2.0.0";
-    }
-
-    @Override
-    public Class<AccountRequest> getRequestClass() {
-        return AccountRequest.class;
-    }
-
-    @Override
-    public Class<AccountDto> getDtoClass() {
-        return AccountDto.class;
     }
 
     @Override

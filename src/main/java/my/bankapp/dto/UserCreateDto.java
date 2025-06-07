@@ -1,7 +1,6 @@
 package my.bankapp.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,10 +11,8 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-public class UserDto {
-    private long id;
+public class UserCreateDto {
     private String login;
     private String name;
     private String password;
-    private Boolean isDeleted;
 }

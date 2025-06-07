@@ -1,6 +1,7 @@
 package my.bankapp.controller;
 
 import my.bankapp.dto.UserDto;
+import my.bankapp.dto.UserReadDto;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.LoginRequest;
 import my.bankapp.model.response.ControllerResponse;
@@ -8,9 +9,9 @@ import my.bankapp.model.response.ControllerResponse;
 import java.util.List;
 import java.util.Optional;
 
-public class LoginController implements CreatableController<UserDto, LoginRequest>, AuthenticatingController {
+public class LoginController implements CreatableController<UserReadDto, LoginRequest>, AuthenticatingController {
     @Override
-    public ControllerResponse<UserDto> processCreate(LoginRequest request, ServiceFactory serviceFactory) {
+    public ControllerResponse<UserReadDto> processCreate(LoginRequest request, ServiceFactory serviceFactory) {
 
 //        response.setSuccess(request.getUsername().equals("alex") && request.getPassword().equals("123"));
 
@@ -28,18 +29,18 @@ public class LoginController implements CreatableController<UserDto, LoginReques
     }
 
     @Override
+    public Class<UserReadDto> getCreatableDtoClass() {
+        return UserReadDto.class;
+    }
+
+    @Override
+    public Class<LoginRequest> getCreatableRequestClass() {
+        return LoginRequest.class;
+    }
+
+    @Override
     public String getVersion() {
         return "2.0.0";
-    }
-
-    @Override
-    public Class<UserDto> getDtoClass() {
-        return UserDto.class;
-    }
-
-    @Override
-    public Class<LoginRequest> getRequestClass() {
-        return LoginRequest.class;
     }
 
     @Override

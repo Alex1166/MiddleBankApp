@@ -4,19 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
+import lombok.ToString;
 
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class AccountDto {
+@ToString
+public class UserReadDto {
     private long id;
-    private long userId;
-    private Integer type;
-    private String title;
-    private BigDecimal balance;
-    private Boolean isDefault;
+    private String login;
+    private String name;
     private Boolean isDeleted;
 }

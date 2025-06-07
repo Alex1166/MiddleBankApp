@@ -4,18 +4,21 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TransactionDto {
+@ToString
+public class AccountReadDto {
     private long id;
-    private Long senderAccountId;
-    private Long recipientAccountId;
-    private BigDecimal money;
-    private Timestamp time;
+    private long userId;
+    private Integer type;
+    private String title;
+    private BigDecimal balance;
+    private Boolean isDefault;
+    private Boolean isDeleted;
 }

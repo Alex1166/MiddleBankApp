@@ -4,8 +4,12 @@ import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.IdRequest;
 import my.bankapp.model.response.ControllerResponse;
 
-public interface DeletableController<DTO, REQ extends IdRequest> extends Controller<DTO, REQ> {
+public interface DeletableController<DTO, REQ> extends Controller<DTO, REQ> {
     default ControllerResponse<DTO> processDelete(long id, ServiceFactory serviceFactory) {
         throw new RuntimeException("Method not supported");
     };
+
+    Class<DTO> getDeletableDtoClass();
+
+//    Class<REQ> getDeletableRequestClass();
 }
