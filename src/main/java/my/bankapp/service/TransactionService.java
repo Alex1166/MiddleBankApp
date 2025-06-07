@@ -1,7 +1,10 @@
 package my.bankapp.service;
 
+import my.bankapp.dto.TransactionCreateDto;
 import my.bankapp.dto.TransactionReadDto;
 import my.bankapp.exception.AccountNotFoundException;
+import my.bankapp.exception.InvalidMoneyValueException;
+import my.bankapp.exception.TransactionException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 import my.bankapp.model.Transaction;
@@ -52,31 +55,47 @@ public class TransactionService {
                 transactionReadDto.getMoney(), transactionReadDto.getTime());
     }
 
-    public TransactionReadDto transferMoney(TransactionReadDto transactionReadDto, AccountService accountService) {
+    public TransactionReadDto transferMoney(TransactionCreateDto transactionCreateDto, AccountService accountService) {
+
+//        TransactionReadDto transactionReadDto = new TransactionReadDto();
+////        if (request.getSenderAccountId() != null) {
+//        transactionReadDto.setSenderAccountId(transactionCreateDto.getSenderAccountId());
+////        }
+////        if (request.getRecipientAccountId() != null) {
+//        transactionReadDto.setRecipientAccountId(transactionCreateDto.getRecipientAccountId());
+////        }
+////        if (request.getMoney() != null) {
+//        transactionReadDto.setMoney(transactionCreateDto.getMoney());
+////        }
 
         long senderAccountId;
         long recipientAccountId;
         BigDecimal money;
 
-        if (transactionReadDto.getSenderAccountId() != null) {
-            senderAccountId = transactionReadDto.getSenderAccountId();
+        if (transactionCreateDto.getSenderAccountId() == null && transactionCreateDto.getRecipientAccountId() == null) {
+            throw new TransactionException("Sender and recipient are not defined");
+        }
+
+        if (transactionCreateDto.getSenderAccountId() != null) {
+            senderAccountId = transactionCreateDto.getSenderAccountId();
         } else {
             senderAccountId = accountService.getCashAccount().orElseThrow(() -> new AccountNotFoundException("Cash account not found")).getId();
         }
-        if (transactionReadDto.getRecipientAccountId() != null) {
-            recipientAccountId = transactionReadDto.getRecipientAccountId();
+        if (transactionCreateDto.getRecipientAccountId() != null) {
+            recipientAccountId = transactionCreateDto.getRecipientAccountId();
         } else {
             recipientAccountId = accountService.getCashAccount().orElseThrow(() -> new AccountNotFoundException("Cash account not found")).getId();
         }
-        if (transactionReadDto.getMoney() != null && transactionReadDto.getMoney().compareTo(BigDecimal.ZERO) > 0) {
-            money = transactionReadDto.getMoney();
+        if (transactionCreateDto.getMoney() != null && transactionCreateDto.getMoney().compareTo(BigDecimal.ZERO) > 0) {
+            money = transactionCreateDto.getMoney();
         } else {
-            throw new RuntimeException();
+            throw new InvalidMoneyValueException("Money should be more than zero");
         }
 
         Connection connection = null;
         RuntimeException mainException = null;
-        Transaction transaction = fromDto(transactionReadDto);
+        Transaction transaction = new Transaction(-1, senderAccountId, recipientAccountId,
+                money, null);
 
         try {
             connection = daoFactory.getDataSource().getConnection();
@@ -95,7 +114,7 @@ public class TransactionService {
             recipientAccount.orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(senderAccountId))).addValue(money);
             daoFactory.getAccountDao().update(recipientAccount.get());
 
-            transaction = saveTransaction(transactionReadDto);
+            transaction = daoFactory.getTransactionDao().insert(transaction);
 
         } catch (SQLException | RuntimeException sqle) {
             mainException = new RuntimeException("Unable to perform operation", sqle);

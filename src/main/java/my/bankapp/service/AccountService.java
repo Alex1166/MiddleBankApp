@@ -1,7 +1,9 @@
 package my.bankapp.service;
 
 import my.bankapp.dao.AccountDao;
+import my.bankapp.dto.AccountCreateDto;
 import my.bankapp.dto.AccountReadDto;
+import my.bankapp.exception.AccountNotFoundException;
 import my.bankapp.exception.DaoException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
@@ -22,10 +24,9 @@ import java.util.stream.Collectors;
 
 public class AccountService {
 
+    private static final long CASH_ACCOUNT_ID = -1L;
     private final AccountDao accountDao;
     private final DaoFactory daoFactory;
-
-    private static final long CASH_ACCOUNT_ID = -1L;
 
     public AccountService(DaoFactory daoFactory) {
         this.daoFactory = daoFactory;
@@ -49,11 +50,12 @@ public class AccountService {
         return toDto(accountDao.insert(account));
     }
 
-    public AccountReadDto createAccount(AccountReadDto accountDto) {
+    public AccountReadDto createAccount(AccountCreateDto accountCreateDto) {
 
-        Account account = new Account(-1, accountDto.getUserId(), accountDto.getType(), accountDto.getTitle(), new BigDecimal("0"), false, false);
+        Account account = new Account(-1, accountCreateDto.getUserId(), accountCreateDto.getType(), accountCreateDto.getTitle(), new BigDecimal("0"),
+                false, false);
 
-        List<AccountReadDto> accountList = getAccountList(accountDto.getUserId());
+        List<AccountReadDto> accountList = getAccountList(accountCreateDto.getUserId());
         if (accountList.isEmpty()) {
             account.setDefault(true);
         }
@@ -66,8 +68,9 @@ public class AccountService {
 //    }
 
     public Optional<AccountReadDto> getAccountById(long accountId) {
-        if (accountDao.findById(accountId).isPresent()) {
-            return Optional.ofNullable(toDto(accountDao.findById(accountId).get()));
+        Optional<Account> AccountById = accountDao.findById(accountId);
+        if (AccountById.isPresent()) {
+            return Optional.ofNullable(toDto(AccountById.get()));
         } else {
             return Optional.empty();
         }
@@ -98,39 +101,43 @@ public class AccountService {
         return accountDao.findAllByUserId(userId).collect(Collectors.toMap(Account::getId, this::toDto));
     }
 
-    public void updateAccount(AccountReadDto accountDto) {
+    public void updateAccount(long id, AccountCreateDto accountCreateDto) {
 
-        Account account = fromDto(accountDto);
+        Account account = accountDao.findById(id).orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(id)));
 
-        if (accountDto.getIsDefault()) {
+        if (accountCreateDto.getIsDefault() != null) {
+            account.setDefault(accountCreateDto.getIsDefault());
+        }
+        if (accountCreateDto.getType() != null) {
+            account.setType(accountCreateDto.getType());
+        }
+        if (accountCreateDto.getTitle() != null) {
+            account.setTitle(accountCreateDto.getTitle());
+        }
+        System.out.println("account = " + account);
+
+        if (account.isDefault()) {
             accountDao.updateDefaultAccount(account);
         }
         accountDao.update(account);
     }
 
-    public boolean deleteAccount(long accountId) {
-        Optional<AccountReadDto> accountDto = getAccountById(accountId);
+    public void deleteAccount(long accountId) {
 
-        if (accountDto.isEmpty()) {
-            return false;
-        }
+        Account account = accountDao.findById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(accountId)));
 
-        accountDto.get().setIsDefault(true);
-        accountDao.update(fromDto(accountDto.get()));
-//        if (accountDao.delete(accountId)) {
-        if (accountDto.get().getIsDefault()) {
-            List<AccountReadDto> accountList = getAccountList(accountDto.get().getUserId());
+        account.setDeleted(true);
+        accountDao.update(account);
+        if (account.isDefault()) {
+            List<AccountReadDto> accountList = getAccountList(account.getUserId());
             if (!accountList.isEmpty()) {
-                accountDto = getAccountById(accountList.get(0).getId());
-                if (accountDto.isPresent()) {
-                    accountDto.get().setIsDefault(true);
-                    updateAccount(accountDto.get());
-                }
+                accountDao.findById(accountList.get(0).getId()).ifPresent((newDefaultAccount)->{
+                    newDefaultAccount.setDefault(true);
+                    accountDao.update(newDefaultAccount);
+                });
             }
         }
-        return true;
-//        }
-//        return false;
     }
 
     public AccountReadDto setUserDefaultAccount(AccountReadDto accountDto) {

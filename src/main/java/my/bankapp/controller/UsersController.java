@@ -25,36 +25,8 @@ public class UsersController implements ReadableController<UserReadDto, UserCrea
     public ControllerResponse<UserReadDto> processUpdate(long id, UserCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("UsersController processUpdate");
 
-//        if (request.getId() == null) {
-//            throw new IdentifierNotProvidedException("Id of user to update was not provided");
-//        }
-
-        UserReadDto userReadDto = serviceFactory.getUserService().getUserById(id)
-                .orElseThrow(() -> new UserNotFoundException("User with id %s not found".formatted(id)));
-
-        UserDto userDto = new UserDto();
-
-        userDto.setId(id);
-        userDto.setIsDeleted(false);
-        if (request.getName() != null) {
-            userDto.setName(request.getName());
-        } else {
-            userDto.setName(userReadDto.getName());
-        }
-        if (request.getLogin() != null) {
-            userDto.setLogin(request.getLogin());
-        } else {
-            userDto.setLogin(userReadDto.getLogin());
-        }
-        if (request.getPassword() != null) {
-            userDto.setPassword(request.getPassword());
-        }
-        System.out.println("userDto = " + userDto);
-        serviceFactory.getUserService().updateUser(userDto);
-
-        userReadDto = new UserReadDto(userDto.getId(), userDto.getLogin(), userDto.getName(), userDto.getIsDeleted());
-
-        return new ControllerResponse<>(true, 200, "application/json", userReadDto);
+        serviceFactory.getUserService().updateUser(id, request);
+        return new ControllerResponse<>(true, 200, "application/json", null);
     }
 
     @Override
@@ -81,17 +53,7 @@ public class UsersController implements ReadableController<UserReadDto, UserCrea
 
     @Override
     public ControllerResponse<UserReadDto> processCreate(UserCreateDto request, ServiceFactory serviceFactory) {
-        UserDto userDto = new UserDto();
-        if (request.getLogin() != null) {
-            userDto.setLogin(request.getLogin());
-        }
-        if (request.getName() != null) {
-            userDto.setName(request.getName());
-        }
-        if (request.getPassword() != null) {
-            userDto.setPassword(request.getPassword());
-        }
-        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().createNewUser(userDto));
+        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().createNewUser(request));
     }
 
     @Override

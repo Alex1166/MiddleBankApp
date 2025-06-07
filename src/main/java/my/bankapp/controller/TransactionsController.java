@@ -48,18 +48,9 @@ public class TransactionsController
 
     @Override
     public ControllerResponse<TransactionReadDto> processCreate(TransactionCreateDto request, ServiceFactory serviceFactory) {
-        TransactionReadDto transactionReadDto = new TransactionReadDto();
-//        if (request.getSenderAccountId() != null) {
-            transactionReadDto.setSenderAccountId(request.getSenderAccountId());
-//        }
-//        if (request.getRecipientAccountId() != null) {
-            transactionReadDto.setRecipientAccountId(request.getRecipientAccountId());
-//        }
-//        if (request.getMoney() != null) {
-            transactionReadDto.setMoney(request.getMoney());
-//        }
+
         return new ControllerResponse<>(true, 202, "application/json", serviceFactory.getTransactionService()
-                .transferMoney(transactionReadDto, serviceFactory.getAccountService()));
+                .transferMoney(request, serviceFactory.getAccountService()));
     }
 
     @Override

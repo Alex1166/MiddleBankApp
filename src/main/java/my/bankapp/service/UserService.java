@@ -1,14 +1,17 @@
 package my.bankapp.service;
 
 import my.bankapp.dao.UserDao;
+import my.bankapp.dto.UserCreateDto;
 import my.bankapp.dto.UserDto;
 import my.bankapp.dto.UserReadDto;
+import my.bankapp.exception.AccountNotFoundException;
 import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 import my.bankapp.model.User;
 import org.apache.commons.codec.digest.DigestUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,13 +57,28 @@ public class UserService {
         }
     }
 
-    public void updateUser(UserDto userDto) {
-        if (userDto.getPassword() != null) {
-            userDto.setPassword(DigestUtils.md5Hex(userDto.getPassword()));
-            userDao.setUserPassword(fromDto(userDto));
+    public void updateUser(long id, UserCreateDto userCreateDto) {
+
+        User user = userDao.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User with id %s not found".formatted(id)));
+
+        if (userCreateDto.getName() != null) {
+            user.setName(userCreateDto.getName());
         }
-        System.out.println("updateUser(UserDto userDto) : " + userDto);
-        userDao.update(fromDto(userDto));
+        if (userCreateDto.getLogin() != null) {
+            user.setLogin(userCreateDto.getLogin());
+        }
+        if (userCreateDto.getPassword() != null) {
+            user.setPassword(userCreateDto.getPassword());
+        }
+        System.out.println("user = " + user);
+
+        if (userCreateDto.getPassword() != null) {
+            user.setPassword(DigestUtils.md5Hex(user.getPassword()));
+            userDao.setUserPassword(user);
+        }
+        System.out.println("updateUser(UserDto user) : " + user);
+        userDao.update(user);
     }
 
     public boolean deleteUser(long userId) throws IllegalArgumentException {
@@ -85,25 +103,24 @@ public class UserService {
         return true;
     }
 
-    public UserReadDto createNewUser(UserDto userDto) {
+    public UserReadDto createNewUser(UserCreateDto userCreateDto) {
 
-        String hash = DigestUtils.md5Hex(userDto.getPassword());
-
-        User user = new User(-1, userDto.getLogin(), userDto.getName(), hash, false);
+        String hash = DigestUtils.md5Hex(userCreateDto.getPassword());
+        User user = new User(-1, userCreateDto.getLogin(), userCreateDto.getName(), hash, false);
         user = userDao.insert(user);
 
         return new UserReadDto(user.getId(), user.getLogin(), user.getName(), user.isDeleted());
     }
 
-    public UserReadDto createNewUser(String login, String name, String password) {
-
-        String hash = DigestUtils.md5Hex(password);
-
-        User user = new User(-1, login, name, hash, false);
-        user = userDao.insert(user);
-
-        return new UserReadDto(user.getId(), user.getLogin(), user.getName(), user.isDeleted());
-    }
+//    public UserReadDto createNewUser(String login, String name, String password) {
+//
+//        String hash = DigestUtils.md5Hex(password);
+//
+//        User user = new User(-1, login, name, hash, false);
+//        user = userDao.insert(user);
+//
+//        return new UserReadDto(user.getId(), user.getLogin(), user.getName(), user.isDeleted());
+//    }
 
     public boolean isPasswordCorrect(String login, String password) throws RuntimeException {
 

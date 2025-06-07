@@ -3,6 +3,7 @@ package my.bankapp.controller;
 import my.bankapp.dto.AccountCreateDto;
 import my.bankapp.dto.AccountReadDto;
 import my.bankapp.exception.AccountNotFoundException;
+import my.bankapp.exception.NotFoundException;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.GetRequest;
 import my.bankapp.model.response.ControllerResponse;
@@ -27,18 +28,8 @@ public class AccountsController implements ReadableController<AccountReadDto, Ac
     @Override
     public ControllerResponse<AccountReadDto> processCreate(AccountCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processCreate");
-        AccountReadDto accountDto = new AccountReadDto();
-//        if (request.getUserId() != null) {
-        accountDto.setUserId(request.getUserId());
-//        }
-//        if (request.getType() != null) {
-        accountDto.setType(request.getType());
-//        }
-//        if (request.getTitle() != null) {
-        accountDto.setTitle(request.getTitle());
-//        }
-        System.out.println("accountDto = " + accountDto);
-        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getAccountService().createAccount(accountDto));
+
+        return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getAccountService().createAccount(request));
     }
 
     @Override
@@ -61,38 +52,17 @@ public class AccountsController implements ReadableController<AccountReadDto, Ac
     public ControllerResponse<AccountReadDto> processUpdate(long id, AccountCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processUpdate");
 
-//        if (request.getId() == null) {
-//            throw new IdentifierNotProvidedException("Id of account to update was not provided");
-//        }
-
-        AccountReadDto accountDto = serviceFactory.getAccountService().getAccountById(id)
-                .orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(id)));
-//        AccountDto accountDto = new AccountDto();
-
-        accountDto.setId(id);
-        accountDto.setIsDeleted(false);
-        if (request.getIsDefault() != null) {
-            accountDto.setIsDefault(request.getIsDefault());
-        }
-        if (request.getType() != null) {
-            accountDto.setType(request.getType());
-        }
-        if (request.getTitle() != null) {
-            accountDto.setTitle(request.getTitle());
-        }
-        System.out.println("accountDto = " + accountDto);
-        serviceFactory.getAccountService().updateAccount(accountDto);
-        return new ControllerResponse<>(true, 200, "application/json", accountDto);
+        serviceFactory.getAccountService().updateAccount(id, request);
+        return new ControllerResponse<>(true, 200, "application/json", null);
     }
 
     @Override
     public ControllerResponse<AccountReadDto> processDelete(long id, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processDelete");
         System.out.println("id = " + id);
-        if (serviceFactory.getAccountService().deleteAccount(id)) {
-            return new ControllerResponse<>(true, 204, "application/json", null);
-        }
-        return new ControllerResponse<>(false, 500, "application/json", null);
+
+        serviceFactory.getAccountService().deleteAccount(id);
+        return new ControllerResponse<>(true, 204, "application/json", null);
     }
 
     @Override
