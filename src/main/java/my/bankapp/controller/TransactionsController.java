@@ -4,7 +4,6 @@ import my.bankapp.dto.TransactionCreateDto;
 import my.bankapp.dto.TransactionReadDto;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.GetRequest;
-import my.bankapp.model.request.TransactionRequest;
 import my.bankapp.model.response.ControllerResponse;
 import my.bankapp.model.response.PaginatedResponse;
 
@@ -54,32 +53,12 @@ public class TransactionsController
     }
 
     @Override
-    public Class<TransactionReadDto> getUpdatableDtoClass() {
-        return TransactionReadDto.class;
-    }
-
-    @Override
     public Class<TransactionCreateDto> getUpdatableRequestClass() {
         return TransactionCreateDto.class;
     }
 
     @Override
-    public Class<TransactionReadDto> getDeletableDtoClass() {
-        return TransactionReadDto.class;
-    }
-
-    @Override
     public Class<TransactionReadDto> getReadableDtoClass() {
-        return TransactionReadDto.class;
-    }
-
-    @Override
-    public Class<TransactionCreateDto> getReadableRequestClass() {
-        return TransactionCreateDto.class;
-    }
-
-    @Override
-    public Class<TransactionReadDto> getCreatableDtoClass() {
         return TransactionReadDto.class;
     }
 
@@ -92,16 +71,6 @@ public class TransactionsController
     public String getVersion() {
         return "2.0.0";
     }
-
-//    @Override
-//    public Class<TransactionDto> getDtoClass() {
-//        return TransactionDto.class;
-//    }
-//
-//    @Override
-//    public Class<TransactionRequest> getRequestClass() {
-//        return TransactionRequest.class;
-//    }
 
     @Override
     public String getPath() {

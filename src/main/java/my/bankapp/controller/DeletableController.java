@@ -8,8 +8,4 @@ public interface DeletableController<DTO, REQ> extends Controller<DTO, REQ> {
     default ControllerResponse<DTO> processDelete(long id, ServiceFactory serviceFactory) {
         throw new RuntimeException("Method not supported");
     };
-
-    Class<DTO> getDeletableDtoClass();
-
-//    Class<REQ> getDeletableRequestClass();
 }

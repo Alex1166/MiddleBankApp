@@ -15,7 +15,7 @@ import java.sql.Timestamp;
 public class TransactionReadDto {
     private long id;
     private Long senderAccountId;
-    private Long recipientAccountId;
+    private Long recipientUserId;
     private BigDecimal money;
     private Timestamp time;
 }

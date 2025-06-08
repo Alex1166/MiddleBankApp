@@ -76,6 +76,15 @@ public class AccountService {
         }
     }
 
+    public Optional<AccountReadDto> getDefaultAccountByUserId(long accountId) {
+        Optional<Account> AccountById = accountDao.findDefaultByUserId(accountId);
+        if (AccountById.isPresent()) {
+            return Optional.ofNullable(toDto(AccountById.get()));
+        } else {
+            return Optional.empty();
+        }
+    }
+
     public Optional<AccountReadDto> getCashAccount() {
         return getAccountById(CASH_ACCOUNT_ID);
     }

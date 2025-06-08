@@ -13,9 +13,6 @@ public class LoginController implements CreatableController<UserReadDto, LoginRe
     @Override
     public ControllerResponse<UserReadDto> processCreate(LoginRequest request, ServiceFactory serviceFactory) {
 
-//        response.setSuccess(request.getUsername().equals("alex") && request.getPassword().equals("123"));
-
-
         if (serviceFactory.getUserService().isPasswordCorrect(request.getLogin(), request.getPassword())) {
             if (serviceFactory.getUserService().getUserByLogin(request.getLogin()).isPresent()) {
                 return new ControllerResponse<>(true, 200, "application/json", serviceFactory.getUserService().getUserByLogin(request.getLogin()).get());
@@ -26,11 +23,6 @@ public class LoginController implements CreatableController<UserReadDto, LoginRe
             return new ControllerResponse<>(true, 401, "application/json", null);
 
         }
-    }
-
-    @Override
-    public Class<UserReadDto> getCreatableDtoClass() {
-        return UserReadDto.class;
     }
 
     @Override

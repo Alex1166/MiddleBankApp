@@ -14,12 +14,13 @@ import java.sql.Timestamp;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(of = {"senderAccountId", "recipientAccountId", "money", "time"})
-@EqualsAndHashCode(of = {"id", "senderAccountId", "recipientAccountId"})
+@ToString
+@EqualsAndHashCode(of = {"id"})
 public class Transaction {
     private long id;
     private long senderAccountId;
-    private long recipientAccountId;
+    private Long recipientUserId;
+    private Long recipientAccountId;
     private BigDecimal money;
     private Timestamp time;
 }

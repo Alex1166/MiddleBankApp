@@ -2,8 +2,6 @@ package my.bankapp.controller;
 
 import my.bankapp.dto.AccountCreateDto;
 import my.bankapp.dto.AccountReadDto;
-import my.bankapp.exception.AccountNotFoundException;
-import my.bankapp.exception.NotFoundException;
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.GetRequest;
 import my.bankapp.model.response.ControllerResponse;
@@ -46,8 +44,6 @@ public class AccountsController implements ReadableController<AccountReadDto, Ac
                 accountList.size() / request.getSize());
     }
 
-    ;
-
     @Override
     public ControllerResponse<AccountReadDto> processUpdate(long id, AccountCreateDto request, ServiceFactory serviceFactory) {
         System.out.println("AccountsController processUpdate");
@@ -66,32 +62,12 @@ public class AccountsController implements ReadableController<AccountReadDto, Ac
     }
 
     @Override
-    public Class<AccountReadDto> getCreatableDtoClass() {
-        return AccountReadDto.class;
-    }
-
-    @Override
     public Class<AccountCreateDto> getCreatableRequestClass() {
         return AccountCreateDto.class;
     }
 
     @Override
-    public Class<AccountReadDto> getDeletableDtoClass() {
-        return AccountReadDto.class;
-    }
-
-    @Override
     public Class<AccountReadDto> getReadableDtoClass() {
-        return AccountReadDto.class;
-    }
-
-    @Override
-    public Class<AccountCreateDto> getReadableRequestClass() {
-        return AccountCreateDto.class;
-    }
-
-    @Override
-    public Class<AccountReadDto> getUpdatableDtoClass() {
         return AccountReadDto.class;
     }
 

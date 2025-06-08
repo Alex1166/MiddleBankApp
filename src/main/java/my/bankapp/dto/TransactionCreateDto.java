@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 @Setter
 @Getter
@@ -14,6 +13,6 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 public class TransactionCreateDto {
     private Long senderAccountId;
-    private Long recipientAccountId;
+    private Long recipientUserId;
     private BigDecimal money;
 }

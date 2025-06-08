@@ -9,7 +9,5 @@ public interface UpdatableController<DTO, REQ> extends Controller<DTO, REQ> {
         throw new RuntimeException("Method not supported");
     };
 
-    Class<DTO> getUpdatableDtoClass();
-
     Class<REQ> getUpdatableRequestClass();
 }

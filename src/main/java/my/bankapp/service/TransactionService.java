@@ -46,33 +46,24 @@ public class TransactionService {
     }
 
     public TransactionReadDto toDto(Transaction transaction) {
-        return new TransactionReadDto(transaction.getId(), transaction.getSenderAccountId(), transaction.getRecipientAccountId(), transaction.getMoney(),
+        return new TransactionReadDto(transaction.getId(), transaction.getSenderAccountId(), transaction.getRecipientAccountId(),
+                transaction.getMoney(),
                 transaction.getTime());
     }
 
     public Transaction fromDto(TransactionReadDto transactionReadDto) {
-        return new Transaction(transactionReadDto.getId(), transactionReadDto.getSenderAccountId(), transactionReadDto.getRecipientAccountId(),
+        return new Transaction(transactionReadDto.getId(), transactionReadDto.getSenderAccountId(), transactionReadDto.getRecipientUserId(), null,
                 transactionReadDto.getMoney(), transactionReadDto.getTime());
     }
 
     public TransactionReadDto transferMoney(TransactionCreateDto transactionCreateDto, AccountService accountService) {
 
-//        TransactionReadDto transactionReadDto = new TransactionReadDto();
-////        if (request.getSenderAccountId() != null) {
-//        transactionReadDto.setSenderAccountId(transactionCreateDto.getSenderAccountId());
-////        }
-////        if (request.getRecipientAccountId() != null) {
-//        transactionReadDto.setRecipientAccountId(transactionCreateDto.getRecipientAccountId());
-////        }
-////        if (request.getMoney() != null) {
-//        transactionReadDto.setMoney(transactionCreateDto.getMoney());
-////        }
-
         long senderAccountId;
+        long recipientUserId;
         long recipientAccountId;
         BigDecimal money;
 
-        if (transactionCreateDto.getSenderAccountId() == null && transactionCreateDto.getRecipientAccountId() == null) {
+        if (transactionCreateDto.getSenderAccountId() == null && transactionCreateDto.getRecipientUserId() == null) {
             throw new TransactionException("Sender and recipient are not defined");
         }
 
@@ -81,10 +72,13 @@ public class TransactionService {
         } else {
             senderAccountId = accountService.getCashAccount().orElseThrow(() -> new AccountNotFoundException("Cash account not found")).getId();
         }
-        if (transactionCreateDto.getRecipientAccountId() != null) {
-            recipientAccountId = transactionCreateDto.getRecipientAccountId();
+        if (transactionCreateDto.getRecipientUserId() != null) {
+            recipientUserId = transactionCreateDto.getRecipientUserId();
+            recipientAccountId = accountService.getDefaultAccountByUserId(recipientUserId)
+                    .orElseThrow(() -> new AccountNotFoundException("User do not have a default account")).getId();
         } else {
             recipientAccountId = accountService.getCashAccount().orElseThrow(() -> new AccountNotFoundException("Cash account not found")).getId();
+            recipientUserId = recipientAccountId;
         }
         if (transactionCreateDto.getMoney() != null && transactionCreateDto.getMoney().compareTo(BigDecimal.ZERO) > 0) {
             money = transactionCreateDto.getMoney();
@@ -92,10 +86,14 @@ public class TransactionService {
             throw new InvalidMoneyValueException("Money should be more than zero");
         }
 
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+
         Connection connection = null;
         RuntimeException mainException = null;
-        Transaction transaction = new Transaction(-1, senderAccountId, recipientAccountId,
-                money, null);
+        Transaction transaction = new Transaction(-1, senderAccountId, recipientUserId, recipientAccountId,
+                money, currentTime);
+
+        System.out.println("transaction = " + transaction);
 
         try {
             connection = daoFactory.getDataSource().getConnection();
@@ -105,16 +103,22 @@ public class TransactionService {
                 statement.execute("SET LOCAL lock_timeout = '15s';");
             }
 
-            Optional<Account> senderAccount = daoFactory.getAccountDao().findById(senderAccountId);
+            Account senderAccount = daoFactory.getAccountDao().findById(senderAccountId)
+                    .orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(senderAccountId)));
 
-            senderAccount.orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(senderAccountId))).subtractValue(money);
-            daoFactory.getAccountDao().update(senderAccount.get());
+            senderAccount.subtractValue(money);
+            System.out.println("senderAccount = " + senderAccount);
+            daoFactory.getAccountDao().update(senderAccount, connection);
 
-            Optional<Account> recipientAccount = daoFactory.getAccountDao().findById(recipientAccountId);
-            recipientAccount.orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(senderAccountId))).addValue(money);
-            daoFactory.getAccountDao().update(recipientAccount.get());
+            Account recipientAccount = daoFactory.getAccountDao().findById(recipientAccountId)
+                    .orElseThrow(() -> new AccountNotFoundException("Account with id %s not found".formatted(senderAccountId)));
+            recipientAccount.addValue(money);
+            System.out.println("recipientAccount = " + recipientAccount);
+            daoFactory.getAccountDao().update(recipientAccount, connection);
 
-            transaction = daoFactory.getTransactionDao().insert(transaction);
+            transaction = daoFactory.getTransactionDao().insert(transaction, connection);
+
+            connection.commit();
 
         } catch (SQLException | RuntimeException sqle) {
             mainException = new RuntimeException("Unable to perform operation", sqle);
@@ -142,13 +146,5 @@ public class TransactionService {
         }
 
         return toDto(transaction);
-    }
-
-    public Transaction saveTransaction(TransactionReadDto transactionReadDto) throws IllegalArgumentException {
-
-        Transaction transaction = new Transaction(-1, transactionReadDto.getSenderAccountId(), transactionReadDto.getRecipientAccountId(),
-                transactionReadDto.getMoney(), new Timestamp(System.currentTimeMillis()));
-
-        return daoFactory.getTransactionDao().insert(transaction);
     }
 }

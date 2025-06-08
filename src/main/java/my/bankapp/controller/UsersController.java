@@ -1,13 +1,8 @@
 package my.bankapp.controller;
 
-import my.bankapp.dto.IdDto;
 import my.bankapp.dto.UserCreateDto;
-import my.bankapp.dto.UserDto;
 import my.bankapp.dto.UserReadDto;
-import my.bankapp.exception.IdentifierNotProvidedException;
-import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.ServiceFactory;
-import my.bankapp.model.request.UserRequest;
 import my.bankapp.model.response.ControllerResponse;
 
 import java.util.List;
@@ -17,7 +12,6 @@ public class UsersController implements ReadableController<UserReadDto, UserCrea
     @Override
     public ControllerResponse<List<UserReadDto>> processGetAll(long id, ServiceFactory serviceFactory) {
         System.out.println("UsersController processGetAll");
-//        return new Response(true, serviceFactory.getUserService().getUserById(id));
         return new ControllerResponse<>(true, 200, "application/json", null);
     }
 
@@ -57,32 +51,12 @@ public class UsersController implements ReadableController<UserReadDto, UserCrea
     }
 
     @Override
-    public Class<UserReadDto> getCreatableDtoClass() {
-        return UserReadDto.class;
-    }
-
-    @Override
     public Class<UserCreateDto> getCreatableRequestClass() {
         return UserCreateDto.class;
     }
 
     @Override
-    public Class<UserReadDto> getDeletableDtoClass() {
-        return UserReadDto.class;
-    }
-
-    @Override
     public Class<UserReadDto> getReadableDtoClass() {
-        return UserReadDto.class;
-    }
-
-    @Override
-    public Class<UserCreateDto> getReadableRequestClass() {
-        return UserCreateDto.class;
-    }
-
-    @Override
-    public Class<UserReadDto> getUpdatableDtoClass() {
         return UserReadDto.class;
     }
 

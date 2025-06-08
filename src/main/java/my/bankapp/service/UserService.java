@@ -4,14 +4,12 @@ import my.bankapp.dao.UserDao;
 import my.bankapp.dto.UserCreateDto;
 import my.bankapp.dto.UserDto;
 import my.bankapp.dto.UserReadDto;
-import my.bankapp.exception.AccountNotFoundException;
 import my.bankapp.exception.UserNotFoundException;
 import my.bankapp.factory.DaoFactory;
 import my.bankapp.model.Account;
 import my.bankapp.model.User;
 import org.apache.commons.codec.digest.DigestUtils;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,15 +32,9 @@ public class UserService {
     }
 
     public Optional<UserReadDto> getUserByLogin(String login) throws RuntimeException {
-        Optional<User> userByLogin = userDao.findByLogin(login);
 
-        if (userByLogin.isPresent()) {
-            User user = userByLogin.get();
+        return getUserById(userDao.findByLogin(login).orElseThrow(() -> new UserNotFoundException("User with login %s not found".formatted(login))));
 
-            return Optional.of(new UserReadDto(user.getId(), user.getLogin(), user.getName(), user.isDeleted()));
-        } else {
-            return Optional.empty();
-        }
     }
 
     public Optional<UserReadDto> getUserById(long userId) throws RuntimeException {
@@ -124,7 +116,8 @@ public class UserService {
 
     public boolean isPasswordCorrect(String login, String password) throws RuntimeException {
 
-        Optional<User> userByLogin = userDao.findByLogin(login);
+        Optional<User> userByLogin = userDao.findById(
+                userDao.findByLogin(login).orElseThrow(() -> new UserNotFoundException("User with login %s not found".formatted(login))));
 
         String hash = userDao.getUserPassword(
                 userByLogin.orElseThrow(() -> new UserNotFoundException("User with login %s not found".formatted(login))));

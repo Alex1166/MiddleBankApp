@@ -20,7 +20,7 @@ public class DaoUtils {
         int parameterCounter = 0;
 
         if (!request.getFilterBy().isEmpty()) {
-            sql.append(" WHERE ");
+            sql.append(" WHERE NOT is_deleted AND ");
 //            Iterator<RequestCondition> iterator = request.getFilterBy().iterator();
             Iterator<RequestOperation> iterator = request.getFilterBy().iterator();
 

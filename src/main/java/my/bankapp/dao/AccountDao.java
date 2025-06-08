@@ -44,6 +44,11 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
                 is_deleted=?
             WHERE id=?;
             """;
+    private static final String DELETE_ACCOUNT_SQL = """
+            UPDATE accounts
+            SET is_deleted=true
+            WHERE id=?;
+            """;
 
     private final DaoFactory daoFactory;
     private final Map<String, String> fieldsMap;
@@ -64,7 +69,7 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
     @Override
     public Optional<Account> findById(long id) {
         Account account = null;
-        String sql = SELECT_ALL_ACCOUNTS_SQL + " WHERE id = ? LIMIT 1";
+        String sql = SELECT_ALL_ACCOUNTS_SQL + " WHERE NOT is_deleted AND id = ?";
 
         try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
@@ -72,7 +77,7 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
 
             ResultSet resultSet = statement.executeQuery();
 
-            while (resultSet.next()) {
+            if (resultSet.next()) {
                 account = new Account(resultSet.getLong("id"), resultSet.getLong("user_id"), resultSet.getInt("type"),
                         resultSet.getString("title"), resultSet.getBigDecimal("money"), resultSet.getBoolean("is_default"),
                         resultSet.getBoolean("is_deleted"));
@@ -89,15 +94,14 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
         return Stream.empty();
     }
 
-    public Stream<Account> findAllByUserId(long id) {
+    public Stream<Account> findAllByUserId(long userId) {
         Stream.Builder<Account> builder = Stream.builder();
 
-        String sql = SELECT_ALL_ACCOUNTS_SQL + " WHERE user_id = ? ORDER BY is_default DESC, id " +
-                     "ASC";
+        String sql = SELECT_ALL_ACCOUNTS_SQL + " WHERE NOT is_deleted AND user_id = ? ORDER BY is_default DESC, id ASC";
 
         try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            statement.setLong(1, id);
+            statement.setLong(1, userId);
 
             ResultSet resultSet = statement.executeQuery();
 
@@ -108,17 +112,40 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
                 builder.add(account);
             }
         } catch (SQLException sqle) {
-            throw new RuntimeException(String.format("Unable to get accounts for user %s", id), sqle);
+            throw new RuntimeException(String.format("Unable to get accounts for user %s", userId), sqle);
         }
 
         return builder.build();
+    }
+
+    public Optional<Account> findDefaultByUserId(long userId) {
+        Account account = null;
+
+        String sql = SELECT_ALL_ACCOUNTS_SQL + " WHERE NOT is_deleted AND user_id = ? AND is_default";
+
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, userId);
+
+            ResultSet resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                account = new Account(resultSet.getLong("id"), resultSet.getLong("user_id"), resultSet.getInt("type"),
+                        resultSet.getString("title"), resultSet.getBigDecimal("money"), resultSet.getBoolean("is_default"),
+                        resultSet.getBoolean("is_deleted"));
+            }
+
+            return Optional.ofNullable(account);
+        } catch (SQLException sqle) {
+            throw new RuntimeException(String.format("Unable to get default account for user with id %s", userId), sqle);
+        }
     }
 
     @Override
     public Stream<Account> findAllByParameters(GetRequest request) {
         Stream.Builder<Account> builder = Stream.builder();
 
-        StringBuilder sql = new StringBuilder(SELECT_ALL_ACCOUNTS_SQL);
+        StringBuilder sql = new StringBuilder(SELECT_ALL_ACCOUNTS_SQL + " WHERE NOT is_deleted AND ");
 
         List<DaoValueToInject> daoValuesToInjectList = applySqlConditions(sql, request, fieldsMap);
 
@@ -145,8 +172,16 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
 
     @Override
     public Account insert(Account account) {
-        try (Connection connection = daoFactory.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(INSERT_ACCOUNT_SQL, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = daoFactory.getConnection()) {
+            return insert(account, connection);
+        } catch (SQLException sqle) {
+            throw new DaoException("Unable to create account", sqle);
+        }
+    }
+
+    @Override
+    public Account insert(Account account, Connection connection) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(INSERT_ACCOUNT_SQL, Statement.RETURN_GENERATED_KEYS)) {
 
             preparedStatement.setLong(1, account.getUserId());
             preparedStatement.setInt(2, account.getType());
@@ -158,7 +193,7 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
 
             ResultSet resultSet = preparedStatement.getGeneratedKeys();
 
-            while (resultSet.next()) {
+            if (resultSet.next()) {
                 account.setId(resultSet.getLong("id"));
             }
             return account;
@@ -167,8 +202,17 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
         }
     }
 
+    @Override
     public void update(Account account) {
-        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(UPDATE_ACCOUNT_SQL)) {
+        try (Connection connection = daoFactory.getConnection()) {
+            update(account, connection);
+        } catch (SQLException sqle) {
+            throw new DaoException(String.format("Unable to update account %s", account.getId()), sqle);
+        }
+    }
+
+    public void update(Account account, Connection connection) {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_ACCOUNT_SQL)) {
 
             statement.setLong(1, account.getUserId());
             statement.setInt(2, account.getType());
@@ -207,15 +251,15 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
 
         Connection connection = null;
         String setDefaultAllFalseSql = """
-            UPDATE accounts
-            SET is_default = FALSE
-            WHERE user_id = ? AND is_default;
-            """;
+                UPDATE accounts
+                SET is_default = FALSE
+                WHERE user_id = ? AND is_default;
+                """;
         String setDefaultTrueSql = """
-            UPDATE accounts
-            SET is_default = TRUE
-            WHERE id = ?;
-            """;
+                UPDATE accounts
+                SET is_default = TRUE
+                WHERE id = ?;
+                """;
 
         RuntimeException mainException = null;
 
@@ -269,11 +313,28 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
         }
     }
 
-    @Override
-    public boolean delete(long id) {
-        String sql = "DELETE FROM accounts WHERE id = ?";
+//    @Override
+//    public boolean delete(long id) {
+//        String sql = "DELETE FROM accounts WHERE id = ?";
+//
+//        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+//
+//            statement.setLong(1, id);
+//
+//            if (statement.executeUpdate() == 0) {
+//                throw new RuntimeException(String.format("Unable to delete account %s", id));
+//            }
+//
+//        } catch (SQLException sqle) {
+//            throw new RuntimeException(String.format("Unable to delete account %s", id), sqle);
+//        }
+//
+//        return true;
+//    }
 
-        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+    @Override
+    public void delete(long id) {
+        try (Connection connection = daoFactory.getConnection(); PreparedStatement statement = connection.prepareStatement(DELETE_ACCOUNT_SQL)) {
 
             statement.setLong(1, id);
 
@@ -284,7 +345,5 @@ public class AccountDao implements CreatableDao<Account>, ReadableDao<Account>, 
         } catch (SQLException sqle) {
             throw new RuntimeException(String.format("Unable to delete account %s", id), sqle);
         }
-
-        return true;
     }
 }

@@ -2,7 +2,6 @@ package my.bankapp.controller;
 
 import my.bankapp.factory.ServiceFactory;
 import my.bankapp.model.request.GetRequest;
-import my.bankapp.model.request.IdRequest;
 import my.bankapp.model.response.ControllerResponse;
 import my.bankapp.model.response.PaginatedResponse;
 
@@ -22,6 +21,4 @@ public interface ReadableController<DTO, REQ> extends Controller<DTO, REQ> {
     };
 
     Class<DTO> getReadableDtoClass();
-
-    Class<REQ> getReadableRequestClass();
 }

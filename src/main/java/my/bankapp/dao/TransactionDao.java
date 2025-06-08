@@ -2,6 +2,7 @@ package my.bankapp.dao;
 
 import my.bankapp.exception.DaoException;
 import my.bankapp.factory.DaoFactory;
+import my.bankapp.model.Account;
 import my.bankapp.model.Transaction;
 import my.bankapp.model.request.GetRequest;
 
@@ -23,14 +24,15 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
     private static final String SELECT_ALL_TRANSACTIONS_SQL = """
             SELECT id,
                 sender_account_id,
+                recipient_user_id,
                 recipient_account_id,
                 money,
                 time
             FROM transactions
             """;
     private static final String INSERT_TRANSACTION_SQL = """
-            INSERT INTO transactions(sender_account_id, recipient_account_id, money)
-                    VALUES (?, ?, ?)
+            INSERT INTO transactions(sender_account_id, recipient_user_id, recipient_account_id, money, time)
+                VALUES (?, ?, ?, ?, ?)
             """;
     private final DaoFactory daoFactory;
     private final Map<String, String> fieldsMap;
@@ -41,6 +43,7 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
         fieldsMap = new HashMap<>();
         fieldsMap.put("id", "id");
         fieldsMap.put("senderAccountId", "sender_account_id");
+        fieldsMap.put("recipientUserId", "recipient_user_id");
         fieldsMap.put("recipientAccountId", "recipient_account_id");
         fieldsMap.put("money", "money");
         fieldsMap.put("time", "time");
@@ -60,6 +63,7 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
 
             while (resultSet.next()) {
                 transaction = new Transaction(resultSet.getLong("id"), resultSet.getLong("sender_account_id"),
+                        resultSet.getLong("recipient_user_id"),
                         resultSet.getLong("recipient_account_id"), resultSet.getBigDecimal("money")
                         , resultSet.getTimestamp("time"));
             }
@@ -77,12 +81,22 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
 
     @Override
     public Transaction insert(Transaction transaction) {
-        try (Connection connection = daoFactory.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(INSERT_TRANSACTION_SQL, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection connection = daoFactory.getConnection()) {
+            return insert(transaction, connection);
+        } catch (SQLException sqle) {
+            throw new DaoException("Unable to save transaction", sqle);
+        }
+    }
+
+    @Override
+    public Transaction insert(Transaction transaction, Connection connection) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(INSERT_TRANSACTION_SQL, Statement.RETURN_GENERATED_KEYS)) {
 
             preparedStatement.setLong(1, transaction.getSenderAccountId());
-            preparedStatement.setLong(2, transaction.getRecipientAccountId());
-            preparedStatement.setBigDecimal(3, transaction.getMoney());
+            preparedStatement.setLong(2, transaction.getRecipientUserId());
+            preparedStatement.setLong(3, transaction.getRecipientAccountId());
+            preparedStatement.setBigDecimal(4, transaction.getMoney());
+            preparedStatement.setTimestamp(5, transaction.getTime());
 
             preparedStatement.executeUpdate();
 
@@ -110,6 +124,7 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
 
             while (resultSet.next()) {
                 Transaction transaction = new Transaction(resultSet.getLong("id"), resultSet.getLong("sender_account_id"),
+                        resultSet.getLong("recipient_user_id"),
                         resultSet.getLong("recipient_account_id"), resultSet.getBigDecimal("money"),
                         resultSet.getTimestamp("time"));
                 builder.add(transaction);
@@ -139,6 +154,7 @@ public class TransactionDao implements CreatableDao<Transaction>, ReadableDao<Tr
 
             while (resultSet.next()) {
                 Transaction transaction = new Transaction(resultSet.getLong("id"), resultSet.getLong("sender_account_id"),
+                        resultSet.getLong("recipient_user_id"),
                         resultSet.getLong("recipient_account_id"), resultSet.getBigDecimal("money")
                         , resultSet.getTimestamp("time"));
                 builder.add(transaction);
