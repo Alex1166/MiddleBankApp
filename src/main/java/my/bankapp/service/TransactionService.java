@@ -121,7 +121,7 @@ public class TransactionService {
             connection.commit();
 
         } catch (SQLException | RuntimeException sqle) {
-            mainException = new RuntimeException("Unable to perform operation", sqle);
+            mainException = new TransactionException("Unable to perform transaction", sqle);
             if (connection != null) {
                 try {
                     connection.rollback();

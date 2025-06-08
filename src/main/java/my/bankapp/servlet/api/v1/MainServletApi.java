@@ -122,7 +122,7 @@ public class MainServletApi extends ApiHttpServlet {
             writeResponse(resp, response);
 
         } catch (Exception e) {
-            logger.error(e);
+            logger.error("ERROR: ", e);
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -183,7 +183,7 @@ public class MainServletApi extends ApiHttpServlet {
             writeResponse(resp, response);
 
         } catch (Exception e) {
-            logger.trace(e);
+            logger.error("ERROR: ", e);
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -233,7 +233,7 @@ public class MainServletApi extends ApiHttpServlet {
             writeResponse(resp, response);
 
         } catch (Exception e) {
-            logger.error(e);
+            logger.error("ERROR: ", e);
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
@@ -273,7 +273,7 @@ public class MainServletApi extends ApiHttpServlet {
             writeResponse(resp, response);
 
         } catch (Exception e) {
-            logger.error(e);
+            logger.error("ERROR: ", e);
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
